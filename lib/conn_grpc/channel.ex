@@ -4,7 +4,7 @@ defmodule ConnGRPC.Channel do
   # Client
 
   def start_link(options) when is_list(options) do
-    GenServer.start_link(__MODULE__, options, [name: options[:name]])
+    GenServer.start_link(__MODULE__, options, name: options[:name])
   end
 
   def get(channel) do
@@ -15,13 +15,22 @@ defmodule ConnGRPC.Channel do
 
   def init(options) do
     send(self(), :connect)
-    config = %{address: Keyword.fetch!(options, :address), options: Keyword.get(options, :options, [])}
-    {:ok, %{channel: nil, config: config}}
+
+    config = %{
+      address: Keyword.fetch!(options, :address),
+      options: Keyword.get(options, :options, [])
+    }
+
+    on_connect = Keyword.get(options, :on_connect, fn -> nil end)
+    on_disconnect = Keyword.get(options, :on_disconnect, fn -> nil end)
+
+    {:ok, %{channel: nil, config: config, on_connect: on_connect, on_disconnect: on_disconnect}}
   end
 
   def handle_info(:connect, state) do
     case GRPC.Stub.connect(state.config.address, state.config.options) do
       {:ok, channel} ->
+        state.on_connect.()
         {:noreply, Map.put(state, :channel, channel)}
 
       {:error, _error} ->
@@ -31,10 +40,12 @@ defmodule ConnGRPC.Channel do
   end
 
   def handle_info({:gun_down, _, _, _, _}, state) do
+    state.on_disconnect.()
     {:noreply, state}
   end
 
   def handle_info({:gun_up, _, _}, state) do
+    state.on_connect.()
     {:noreply, state}
   end
 

@@ -10,7 +10,10 @@ defmodule ConnGRPC.Application do
       # Starts a worker by calling: ConnGRPC.Worker.start_link(arg)
       # {ConnGRPC.Worker, arg}
       # {ConnGRPC.Channel, name: :my_channel, address: "localhost:50020"}
-      MyChannel
+      # MyChannel,
+      # {Registry, name: :my_registry, keys: :duplicate}
+
+      {ConnGRPC.Pool, name: :my_pool, channel: [address: "localhost:50020"], pool_size: 10}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
