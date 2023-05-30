@@ -1,4 +1,4 @@
-defmodule ConnGrpc.Channel do
+defmodule ConnGRPC.Channel do
   use GenServer
 
   # Client
@@ -46,5 +46,19 @@ defmodule ConnGrpc.Channel do
       end
 
     {:reply, response, state}
+  end
+
+  defmacro __using__(use_opts \\ []) do
+    quote do
+      def get, do: ConnGRPC.Channel.get(__MODULE__)
+
+      def child_spec(opts) do
+        [name: __MODULE__]
+        |> Keyword.merge(unquote(use_opts))
+        |> Keyword.merge(opts)
+        |> ConnGRPC.Channel.child_spec()
+        |> Supervisor.child_spec(id: __MODULE__)
+      end
+    end
   end
 end

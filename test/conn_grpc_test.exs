@@ -1,8 +1,8 @@
-defmodule ConnGrpcTest do
+defmodule ConnGRPCTest do
   use ExUnit.Case
-  doctest ConnGrpc
+  doctest ConnGRPC
 
   test "greets the world" do
-    assert ConnGrpc.hello() == :world
+    assert ConnGRPC.hello() == :world
   end
 end

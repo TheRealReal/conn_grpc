@@ -1,4 +1,4 @@
-# ConnGrpc
+# ConnGRPC
 
 **TODO: Add description**
 

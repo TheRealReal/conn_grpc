@@ -1,4 +1,4 @@
-defmodule ConnGrpc.MixProject do
+defmodule ConnGRPC.MixProject do
   use Mix.Project
 
   def project do
@@ -15,7 +15,7 @@ defmodule ConnGrpc.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {ConnGrpc.Application, []}
+      mod: {ConnGRPC.Application, []}
     ]
   end
 

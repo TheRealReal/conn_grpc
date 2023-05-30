@@ -1,6 +1,6 @@
-defmodule ConnGrpc do
+defmodule ConnGRPC do
   @moduledoc """
-  Documentation for `ConnGrpc`.
+  Documentation for `ConnGRPC`.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule ConnGrpc do
 
   ## Examples
 
-      iex> ConnGrpc.hello()
+      iex> ConnGRPC.hello()
       :world
 
   """
