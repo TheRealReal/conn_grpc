@@ -4,7 +4,6 @@ defmodule ConnGRPC.PoolTest do
   alias ConnGRPC.Pool
 
   setup do
-    Process.register(self(), :test)
     pool_name = :"test_pool_#{inspect(self())}"
     {:ok, pool_name: pool_name}
   end
