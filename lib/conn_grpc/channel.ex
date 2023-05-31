@@ -18,9 +18,6 @@ defmodule ConnGRPC.Channel do
         use ConnGRPC.Channel, address: "localhost:50051", opts: []
       end
 
-  The format of `address` and `opts` is the same used by
-  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
-
   Then, you can add the module to your application supervision tree.
 
       defmodule Demo.Application do
@@ -63,13 +60,13 @@ defmodule ConnGRPC.Channel do
         end
       end
 
-  The format of `address` and `opts` is the same used by
-  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
-
   To get the connection in your application, call:
 
       ConnGRPC.Channel.get_channel(:demo_channel)
 
+  ## Options available
+
+  For all options available, see `start_link/1`.
   """
 
   use GenServer
@@ -78,6 +75,18 @@ defmodule ConnGRPC.Channel do
 
   # Client
 
+  @doc """
+  TODO: The options available are:
+
+  - address
+  - opts
+  - debug
+  - backoff:
+  - backoff_module:
+
+  The format of `address` and `opts` is the same used by
+  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+  """
   def start_link(options) when is_list(options) do
     GenServer.start_link(__MODULE__, options, name: options[:name])
   end
@@ -92,12 +101,10 @@ defmodule ConnGRPC.Channel do
 
   @impl true
   def init(options) do
-    backoff_options = Keyword.get(options, :backoff, [])
-
     state = %{
       backoff: %{
-        module: Keyword.get(backoff_options, :module, ConnGRPC.Backoff.Exponential),
-        opts: Keyword.get(backoff_options, :opts, min: 1000, max: 30_000)
+        module: Keyword.get(options, :backoff_module, ConnGRPC.Backoff.Exponential),
+        opts: Keyword.get(options, :backoff, min: 1000, max: 30_000)
       },
       channel: nil,
       config: %{
