@@ -97,7 +97,7 @@ defmodule ConnGRPC.Channel do
     state = %{
       backoff: %{
         module: Keyword.get(backoff_options, :module, ConnGRPC.Backoff.Exponential),
-        opts: Keyword.get(backoff_options, :opts, [min: 1000, max: 30_000])
+        opts: Keyword.get(backoff_options, :opts, min: 1000, max: 30_000)
       },
       channel: nil,
       config: %{
@@ -108,7 +108,7 @@ defmodule ConnGRPC.Channel do
       debug: Keyword.get(options, :debug, false),
       name: Keyword.get(options, :name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
-      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end),
+      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end)
     }
 
     state = initialize_backoff(state)
