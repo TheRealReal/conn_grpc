@@ -1,4 +1,77 @@
 defmodule ConnGRPC.Channel do
+  @doc """
+  A process that manages a gRPC channel.
+
+  When `ConnGRPC.Channel` is started, it will create a gRPC connection, which can be fetched with
+  `ConnGRPC.Channel.get/1`.
+
+  You can use this if you want to keep a persistent gRPC channel open to be reused in your application.
+
+  Depending on the load, using a single channel for the entire application may become a bottleneck. In that
+  case, see the `ConnGRPC.Pool` module, that allows creating a pool of channels.
+
+  ## Module-based channel
+
+  To implement a module-based gRPC channel, define a module that uses `ConnGRPC.Channel`.
+
+      defmodule DemoChannel do
+        use ConnGRPC.Channel, address: "localhost:50051", opts: []
+      end
+
+  The format of `address` and `opts` is the same used by
+  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+
+  Then, you can add the module to your application supervision tree.
+
+      defmodule Demo.Application do
+        use Application
+
+        @impl true
+        def start(_type, _args) do
+          children = [
+            DemoChannel
+          ]
+
+          Supervisor.start_link(children, strategy: :one_for_one, name: Demo.Supervisor)
+        end
+      end
+
+  To get the connection in your application, call:
+
+      DemoChannel.get()
+
+  It'll return either `{:ok, channel}` or `{:error, :not_connected}`.
+
+  ## Channel without module
+
+  If you don't want to define for your channel, you can add `ConnGRPC.Channel` directly to your
+  supervision tree and pass the options on the child spec.
+
+      defmodule Demo.Application do
+        use Application
+
+        @impl true
+        def start(_type, _args) do
+          children = [
+            Supervisor.child_spec(
+              {ConnGRPC.Channel, name: :demo_channel, address: "localhost:50051", opts: []},
+              id: :demo_channel
+            )
+          ]
+
+          Supervisor.start_link(children, strategy: :one_for_one, name: Demo.Supervisor)
+        end
+      end
+
+  The format of `address` and `opts` is the same used by
+  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+
+  To get the connection in your application, call:
+
+      ConnGRPC.Channel.get_channel(:demo_channel)
+
+  """
+
   use GenServer
 
   # Client
@@ -11,14 +84,14 @@ defmodule ConnGRPC.Channel do
     GenServer.call(channel, :get)
   end
 
-  # server
+  # Server
 
   def init(options) do
     send(self(), :connect)
 
     config = %{
       address: Keyword.fetch!(options, :address),
-      options: Keyword.get(options, :options, [])
+      opts: Keyword.get(options, :opts, [])
     }
 
     on_connect = Keyword.get(options, :on_connect, fn -> nil end)
@@ -28,7 +101,7 @@ defmodule ConnGRPC.Channel do
   end
 
   def handle_info(:connect, state) do
-    case GRPC.Stub.connect(state.config.address, state.config.options) do
+    case GRPC.Stub.connect(state.config.address, state.config.opts) do
       {:ok, channel} ->
         state.on_connect.()
         {:noreply, Map.put(state, :channel, channel)}
