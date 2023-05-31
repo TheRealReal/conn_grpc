@@ -142,6 +142,7 @@ defmodule ConnGRPC.Channel do
 
   defmacro __using__(use_opts \\ []) do
     quote do
+      @doc "Returns the gRPC channel"
       @spec get() :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
       def get, do: ConnGRPC.Channel.get(__MODULE__)
 
