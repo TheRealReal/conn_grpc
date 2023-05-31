@@ -23,7 +23,8 @@ defmodule ConnGRPC.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:grpc, "~> 0.5.0"}
+      {:grpc, "~> 0.5.0"},
+      {:backoff, "~> 1.1"}
     ]
   end
 

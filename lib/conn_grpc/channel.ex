@@ -74,6 +74,8 @@ defmodule ConnGRPC.Channel do
 
   use GenServer
 
+  require Logger
+
   # Client
 
   def start_link(options) when is_list(options) do
@@ -90,18 +92,33 @@ defmodule ConnGRPC.Channel do
 
   @impl true
   def init(options) do
+    backoff_options = Keyword.get(options, :backoff, [])
+
     state = %{
+      backoff: %{
+        module: Keyword.get(backoff_options, :module, ConnGRPC.Backoff.Exponential),
+        opts: Keyword.get(backoff_options, :opts, [min: 1000, max: 30_000])
+      },
       channel: nil,
       config: %{
         grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
         address: Keyword.fetch!(options, :address),
         opts: Keyword.get(options, :opts, [])
       },
+      debug: Keyword.get(options, :debug, false),
+      name: Keyword.get(options, :name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
-      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end)
+      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end),
     }
 
+    state = initialize_backoff(state)
+
     {:ok, state, {:continue, :connect}}
+  end
+
+  defp initialize_backoff(state) do
+    %{module: module, opts: opts} = state.backoff
+    put_in(state.backoff[:state], module.new(opts))
   end
 
   @impl true
@@ -111,11 +128,13 @@ defmodule ConnGRPC.Channel do
   def handle_info(:connect, state), do: connect(state)
 
   def handle_info({:gun_down, _, _, _, _}, state) do
+    log(state, "Gun disconnected")
     state.on_disconnect.()
     {:noreply, state}
   end
 
   def handle_info({:gun_up, _, _}, state) do
+    log(state, "Gun reconnected")
     state.on_connect.()
     {:noreply, state}
   end
@@ -136,13 +155,36 @@ defmodule ConnGRPC.Channel do
 
     case grpc_stub.connect(address, opts) do
       {:ok, channel} ->
+        log(state, "Connected")
         state.on_connect.()
-        {:noreply, Map.put(state, :channel, channel)}
+        {:noreply, %{state | channel: channel} |> reset_backoff()}
 
-      {:error, _error} ->
-        Process.send_after(self(), :connect, 2000)
+      {:error, error} ->
+        {retry_delay, state} = increment_backoff(state)
+        Process.send_after(self(), :connect, retry_delay)
+        log(state, "Connection failed. Retrying in #{retry_delay}ms. Error: #{inspect(error)}.")
         {:noreply, state}
     end
+  end
+
+  defp reset_backoff(state) do
+    %{module: backoff_module} = state.backoff
+    update_in(state.backoff.state, &backoff_module.reset/1)
+  end
+
+  defp increment_backoff(state) do
+    %{module: backoff_module, state: backoff_state} = state.backoff
+
+    {delay, backoff_state} = backoff_module.backoff(backoff_state)
+
+    {delay, put_in(state.backoff.state, backoff_state)}
+  end
+
+  defp log(%{debug: false}, _message), do: nil
+
+  defp log(%{debug: true, name: name}, message) do
+    prefix = "[ConnGRPC.Channel:#{inspect(name || self())}] "
+    Logger.debug(prefix <> message)
   end
 
   defmacro __using__(use_opts \\ []) do
