@@ -93,12 +93,10 @@ defmodule ConnGRPC.PoolTest do
 
       assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
       assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel4} = Pool.get_channel(pool_name)
+      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
-      assert channel3 == channel1
-      assert channel4 == channel2
     end
 
     test "returns reconnected channel", %{pool_name: pool_name} do
@@ -122,14 +120,12 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
       assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
       assert {:ok, %FakeGRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel4} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel5} = Pool.get_channel(pool_name)
+      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %FakeGRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
       refute channel2 == channel3
-      refute channel3 == channel4
-      assert channel4 == channel1
-      assert channel5 == channel2
     end
   end
 
