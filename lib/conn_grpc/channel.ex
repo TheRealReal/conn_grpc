@@ -76,7 +76,7 @@ defmodule ConnGRPC.Channel do
   # Client
 
   @doc """
-  Start a persistent gRPC channel.
+  Starts and links process that keeps a persistent gRPC channel.
 
   ### Options
 
