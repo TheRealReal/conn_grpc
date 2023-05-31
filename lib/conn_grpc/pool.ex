@@ -1,5 +1,5 @@
 defmodule ConnGRPC.Pool do
-  @doc """
+  @moduledoc """
   A process that manages a pool of persistent gRPC channels.
 
   When `ConnGRPC.Pool` is started, it will start a pool of pre-connected channels. You can
@@ -79,6 +79,7 @@ defmodule ConnGRPC.Pool do
 
   defmacro __using__(use_opts \\ []) do
     quote do
+      @spec get_channel() :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
       def get_channel, do: ConnGRPC.Pool.get_channel(__MODULE__)
 
       def child_spec(opts) do
@@ -95,6 +96,8 @@ defmodule ConnGRPC.Pool do
     Supervisor.start_link(__MODULE__, opts, name: opts[:name])
   end
 
+  @doc "Returns a gRPC channel from the pool"
+  @spec get_channel(module | atom) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
   def get_channel(pool_name) do
     channels = Registry.lookup(registry(pool_name), :channels)
     pool_size = length(channels)

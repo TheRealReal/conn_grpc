@@ -9,7 +9,7 @@ defmodule ConnGRPC.MixProject do
       app: :conn_grpc,
       version: @version,
       name: "ConnGRPC",
-      description: "Persistent channels, and channel pools for gRPC Elixir"
+      description: "Persistent channels, and channel pools for gRPC Elixir",
       elixir: "~> 1.10",
       deps: deps(),
       docs: docs(),

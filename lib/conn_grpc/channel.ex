@@ -1,5 +1,5 @@
 defmodule ConnGRPC.Channel do
-  @doc """
+  @moduledoc """
   A process that manages a gRPC channel.
 
   When `ConnGRPC.Channel` is started, it will create a gRPC connection, which can be fetched with
@@ -80,12 +80,15 @@ defmodule ConnGRPC.Channel do
     GenServer.start_link(__MODULE__, options, name: options[:name])
   end
 
+  @doc "Returns the gRPC channel"
+  @spec get(atom | pid) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
   def get(channel) do
     GenServer.call(channel, :get)
   end
 
   # Server
 
+  @impl true
   def init(options) do
     send(self(), :connect)
 
@@ -101,6 +104,7 @@ defmodule ConnGRPC.Channel do
     {:ok, %{channel: nil, config: config, on_connect: on_connect, on_disconnect: on_disconnect}}
   end
 
+  @impl true
   def handle_info(:connect, state) do
     %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
 
@@ -125,6 +129,7 @@ defmodule ConnGRPC.Channel do
     {:noreply, state}
   end
 
+  @impl true
   def handle_call(:get, _from, state) do
     response =
       case state.channel do
@@ -137,6 +142,7 @@ defmodule ConnGRPC.Channel do
 
   defmacro __using__(use_opts \\ []) do
     quote do
+      @spec get() :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
       def get, do: ConnGRPC.Channel.get(__MODULE__)
 
       def child_spec(opts) do
