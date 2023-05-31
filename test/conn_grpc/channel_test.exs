@@ -8,33 +8,17 @@ defmodule ConnGRPC.ChannelTest do
     :ok
   end
 
-  defmodule FakeGRPC do
-    defmodule Channel do
-      defstruct []
-    end
-
-    defmodule Stub do
-      defmodule Success do
-        def connect(_address, _opts), do: {:ok, %FakeGRPC.Channel{}}
-      end
-
-      defmodule Fail do
-        def connect(_address, _opts), do: {:error, "reason"}
-      end
-    end
-  end
-
   describe "start_link/1" do
     test "starts the process successfully" do
       assert {:ok, _pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Success,
+        grpc_stub: FakeGRPC.SuccessStub,
         address: "address"
       )
     end
 
     test "names the process when `name` option is passed" do
       assert {:ok, pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Success,
+        grpc_stub: FakeGRPC.SuccessStub,
         address: "address",
         name: :test_channel
       )
@@ -45,7 +29,7 @@ defmodule ConnGRPC.ChannelTest do
 
   describe "Connection" do
     test "calls grpc_stub.connect/2 with address and options" do
-      defmodule FakeGRPC.Stub.CallTest do
+      defmodule CallArgsTest do
         def connect(address, opts) do
           send(:test, {:called, address, opts})
           {:ok, %FakeGRPC.Channel{}}
@@ -53,7 +37,7 @@ defmodule ConnGRPC.ChannelTest do
       end
 
       {:ok, _pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.CallTest,
+        grpc_stub: CallArgsTest,
         address: "address",
         opts: [headers: [foo: "bar"]]
       )
@@ -63,7 +47,7 @@ defmodule ConnGRPC.ChannelTest do
 
     test "calls on_connect when connection succeeds" do
       {:ok, _pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Success,
+        grpc_stub: FakeGRPC.SuccessStub,
         address: "address",
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end
@@ -75,7 +59,7 @@ defmodule ConnGRPC.ChannelTest do
 
     test "does not call connection callbacks when connection does not succeed" do
       {:ok, _pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Fail,
+        grpc_stub: FakeGRPC.ErrorStub,
         address: "address",
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end
@@ -87,7 +71,7 @@ defmodule ConnGRPC.ChannelTest do
 
     test "calls on_disconnect when gun disconnects" do
       {:ok, channel_pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Success,
+        grpc_stub: FakeGRPC.SuccessStub,
         address: "address",
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end
@@ -102,7 +86,7 @@ defmodule ConnGRPC.ChannelTest do
 
     test "calls on_connect when gun reconnects" do
       {:ok, channel_pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Success,
+        grpc_stub: FakeGRPC.SuccessStub,
         address: "address",
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end
@@ -119,7 +103,7 @@ defmodule ConnGRPC.ChannelTest do
   describe "get/1" do
     test "returns {:ok, channel} when it is able to connect" do
       {:ok, channel_pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Success,
+        grpc_stub: FakeGRPC.SuccessStub,
         address: "address"
       )
 
@@ -128,7 +112,7 @@ defmodule ConnGRPC.ChannelTest do
 
     test "returns {:error, :not_connected} when it is not able to connect" do
       {:ok, channel_pid} = Channel.start_link(
-        grpc_stub: FakeGRPC.Stub.Fail,
+        grpc_stub: FakeGRPC.ErrorStub,
         address: "address"
       )
 
@@ -139,7 +123,7 @@ defmodule ConnGRPC.ChannelTest do
   describe "__using__" do
     test "allows defining channel as a module" do
       defmodule UsingTestChannel do
-        use ConnGRPC.Channel, address: "address", grpc_stub: FakeGRPC.Stub.Success
+        use ConnGRPC.Channel, address: "address", grpc_stub: FakeGRPC.SuccessStub
       end
 
       Supervisor.start_link([UsingTestChannel], strategy: :one_for_one)
