@@ -90,6 +90,7 @@ defmodule ConnGRPC.Channel do
     send(self(), :connect)
 
     config = %{
+      grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
       address: Keyword.fetch!(options, :address),
       opts: Keyword.get(options, :opts, [])
     }
@@ -101,7 +102,9 @@ defmodule ConnGRPC.Channel do
   end
 
   def handle_info(:connect, state) do
-    case GRPC.Stub.connect(state.config.address, state.config.opts) do
+    %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
+
+    case grpc_stub.connect(address, opts) do
       {:ok, channel} ->
         state.on_connect.()
         {:noreply, Map.put(state, :channel, channel)}
