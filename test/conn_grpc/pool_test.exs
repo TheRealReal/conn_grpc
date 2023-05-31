@@ -139,12 +139,14 @@ defmodule ConnGRPC.PoolTest do
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
+      disconnected_pid = Enum.at(pids, 1)
+      simulate_disconnect(disconnected_pid)
       :timer.sleep(100)
 
       result = Pool.get_all_pids(pool_name)
       assert length(result) == 4
       assert Enum.all?(result, &is_pid/1)
+      refute disconnected_pid in result
     end
 
     test "returns pid of reconnected channel", %{pool_name: pool_name} do
