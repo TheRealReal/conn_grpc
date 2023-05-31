@@ -90,34 +90,25 @@ defmodule ConnGRPC.Channel do
 
   @impl true
   def init(options) do
-    send(self(), :connect)
-
-    config = %{
-      grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
-      address: Keyword.fetch!(options, :address),
-      opts: Keyword.get(options, :opts, [])
+    state = %{
+      channel: nil,
+      config: %{
+        grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
+        address: Keyword.fetch!(options, :address),
+        opts: Keyword.get(options, :opts, [])
+      },
+      on_connect: Keyword.get(options, :on_connect, fn -> nil end),
+      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end)
     }
 
-    on_connect = Keyword.get(options, :on_connect, fn -> nil end)
-    on_disconnect = Keyword.get(options, :on_disconnect, fn -> nil end)
-
-    {:ok, %{channel: nil, config: config, on_connect: on_connect, on_disconnect: on_disconnect}}
+    {:ok, state, {:continue, :connect}}
   end
 
   @impl true
-  def handle_info(:connect, state) do
-    %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
+  def handle_continue(:connect, state), do: connect(state)
 
-    case grpc_stub.connect(address, opts) do
-      {:ok, channel} ->
-        state.on_connect.()
-        {:noreply, Map.put(state, :channel, channel)}
-
-      {:error, _error} ->
-        Process.send_after(self(), :connect, 2000)
-        {:noreply, state}
-    end
-  end
+  @impl true
+  def handle_info(:connect, state), do: connect(state)
 
   def handle_info({:gun_down, _, _, _, _}, state) do
     state.on_disconnect.()
@@ -138,6 +129,20 @@ defmodule ConnGRPC.Channel do
       end
 
     {:reply, response, state}
+  end
+
+  defp connect(state) do
+    %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
+
+    case grpc_stub.connect(address, opts) do
+      {:ok, channel} ->
+        state.on_connect.()
+        {:noreply, Map.put(state, :channel, channel)}
+
+      {:error, _error} ->
+        Process.send_after(self(), :connect, 2000)
+        {:noreply, state}
+    end
   end
 
   defmacro __using__(use_opts \\ []) do
