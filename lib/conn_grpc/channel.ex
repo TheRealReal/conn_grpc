@@ -76,16 +76,29 @@ defmodule ConnGRPC.Channel do
   # Client
 
   @doc """
-  TODO: The options available are:
+  Start a persistent gRPC channel.
 
-  - address
-  - opts
-  - debug
-  - backoff:
-  - backoff_module:
+  ### Options
 
-  The format of `address` and `opts` is the same used by
-  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+    * `:address` - The gRPC server address. For more details,
+    see [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+
+    * `:opts` - Options for Elixir gRPC. For more details,
+    see [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+
+    * `:name` - A name to register the started process (see the `:name` option
+      in `GenServer.start_link/3`)
+
+    * `:backoff` - Minimum and maximum exponential backoff intervals (default: `[min: 1000, max: 30_000]`)
+
+    * `:backoff_module` - Backoff module to be used (default: `ConnGRPC.Backoff.Exponential`).
+    If you'd like to implement your own backoff, see the `ConnRPC.Backoff` behavior.
+
+    * `:debug` - Write debug logs (default: `false`)
+
+    * `:on_connect` - Function to run on connect (0-arity)
+
+    * `:on_disconnect` - Function to run on disconnect (0-arity)
   """
   def start_link(options) when is_list(options) do
     GenServer.start_link(__MODULE__, options, name: options[:name])
