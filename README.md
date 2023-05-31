@@ -1,21 +1,29 @@
 # ConnGRPC
 
-**TODO: Add description**
+Persistent channels, and channel pools for [gRPC Elixir](https://github.com/elixir-grpc/grpc).
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `conn_grpc` to your list of dependencies in `mix.exs`:
+Add `conn_grpc` to your list of dependencies:
 
 ```elixir
 def deps do
-  [
-    {:conn_grpc, "~> 0.1.0"}
-  ]
+  [{:conn_grpc, "~> 0.1"}]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/conn_grpc](https://hexdocs.pm/conn_grpc).
+## How to use
 
+For pool implementation, see [`ConnGRPC.Pool`](https://hexdocs.pm/conn_grpc/0.1.0/ConnGRPC.Pool.html)
+
+For single persistent channel implementation, see [`ConnGRPC.Channel`](https://hexdocs.pm/conn_grpc/0.1.0/ConnGRPC.Channel.html)
+
+## Code of Conduct
+
+This project  Contributor Covenant version 2.1. Check [CODE_OF_CONDUCT.md](/CODE_OF_CONDUCT.md) file for more information.
+
+## License
+
+ConnGRPC source code is released under Apache License 2.0.
+
+Check [NOTICE](/NOTICE) and [LICENSE](/LICENSE) files for more information.
