@@ -80,6 +80,8 @@ defmodule ConnGRPC.Channel do
     GenServer.start_link(__MODULE__, options, name: options[:name])
   end
 
+  @doc "Returns the gRPC channel"
+  @spec get(atom | pid) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
   def get(channel) do
     GenServer.call(channel, :get)
   end
@@ -137,6 +139,8 @@ defmodule ConnGRPC.Channel do
 
   defmacro __using__(use_opts \\ []) do
     quote do
+      @doc "Returns the gRPC channel"
+      @spec get() :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
       def get, do: ConnGRPC.Channel.get(__MODULE__)
 
       def child_spec(opts) do
