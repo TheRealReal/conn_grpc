@@ -28,22 +28,6 @@ defmodule ConnGRPC.PoolTest do
     end
   end
 
-  describe "get_all_pids/1" do
-    test "returns list of pids", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
-      )
-
-      :timer.sleep(100)
-
-      result = Pool.get_all_pids(pool_name)
-      assert length(result) == 5
-      assert Enum.all?(result, &is_pid/1)
-    end
-  end
-
   describe "get_channel/1" do
     test "returns {:ok, channel} using round-robin", %{pool_name: pool_name} do
       {:ok, _} = Pool.start_link(
@@ -88,7 +72,7 @@ defmodule ConnGRPC.PoolTest do
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> send({:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
+      Enum.at(pids, 1) |> simulate_disconnect()
       :timer.sleep(100)
 
       assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
@@ -110,11 +94,11 @@ defmodule ConnGRPC.PoolTest do
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> send({:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
+      Enum.at(pids, 1) |> simulate_disconnect()
       :timer.sleep(100)
 
       # Simulate reconnect
-      Enum.at(pids, 1) |> send({:gun_up, :erlang.list_to_pid('<0.123.456>'), :http2})
+      Enum.at(pids, 1) |> simulate_connect()
       :timer.sleep(100)
 
       assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
@@ -126,6 +110,64 @@ defmodule ConnGRPC.PoolTest do
 
       refute channel1 == channel2
       refute channel2 == channel3
+    end
+  end
+
+  describe "get_all_pids/1" do
+    test "returns list of pids", %{pool_name: pool_name} do
+      {:ok, _} = Pool.start_link(
+        name: pool_name,
+        pool_size: 5,
+        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+      )
+
+      :timer.sleep(100)
+
+      result = Pool.get_all_pids(pool_name)
+      assert length(result) == 5
+      assert Enum.all?(result, &is_pid/1)
+    end
+
+    test "does not return pid of disconnected channel", %{pool_name: pool_name} do
+      {:ok, _} = Pool.start_link(
+        name: pool_name,
+        pool_size: 5,
+        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+      )
+
+      :timer.sleep(100)
+
+      # Simulate disconnect
+      pids = Pool.get_all_pids(pool_name)
+      Enum.at(pids, 1) |> simulate_disconnect()
+      :timer.sleep(100)
+
+      result = Pool.get_all_pids(pool_name)
+      assert length(result) == 4
+      assert Enum.all?(result, &is_pid/1)
+    end
+
+    test "returns pid of reconnected channel", %{pool_name: pool_name} do
+      {:ok, _} = Pool.start_link(
+        name: pool_name,
+        pool_size: 5,
+        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+      )
+
+      :timer.sleep(100)
+
+      # Simulate disconnect
+      pids = Pool.get_all_pids(pool_name)
+      Enum.at(pids, 1) |> simulate_disconnect()
+      :timer.sleep(100)
+
+      # Simulate connect
+      Enum.at(pids, 1) |> simulate_connect()
+      :timer.sleep(100)
+
+      result = Pool.get_all_pids(pool_name)
+      assert length(result) == 5
+      assert Enum.all?(result, &is_pid/1)
     end
   end
 
@@ -144,5 +186,13 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, %FakeGRPC.Channel{}} = UsingTestPool.get_channel()
       assert is_list(UsingTestPool.get_all_pids())
     end
+  end
+
+  defp simulate_connect(pid) do
+    send(pid, {:gun_up, :erlang.list_to_pid('<0.123.456>'), :http2})
+  end
+
+  defp simulate_disconnect(pid) do
+    send(pid, {:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
   end
 end
