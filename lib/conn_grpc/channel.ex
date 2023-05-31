@@ -88,6 +88,7 @@ defmodule ConnGRPC.Channel do
 
   # Server
 
+  @impl true
   def init(options) do
     send(self(), :connect)
 
@@ -103,6 +104,7 @@ defmodule ConnGRPC.Channel do
     {:ok, %{channel: nil, config: config, on_connect: on_connect, on_disconnect: on_disconnect}}
   end
 
+  @impl true
   def handle_info(:connect, state) do
     %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
 
@@ -127,6 +129,7 @@ defmodule ConnGRPC.Channel do
     {:noreply, state}
   end
 
+  @impl true
   def handle_call(:get, _from, state) do
     response =
       case state.channel do
