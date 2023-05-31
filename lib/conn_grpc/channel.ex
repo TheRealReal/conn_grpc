@@ -128,13 +128,13 @@ defmodule ConnGRPC.Channel do
   def handle_info(:connect, state), do: connect(state)
 
   def handle_info({:gun_down, _, _, _, _}, state) do
-    log(state, "Gun disconnected")
+    debug(state, "Gun disconnected")
     state.on_disconnect.()
     {:noreply, state}
   end
 
   def handle_info({:gun_up, _, _}, state) do
-    log(state, "Gun reconnected")
+    debug(state, "Gun reconnected")
     state.on_connect.()
     {:noreply, state}
   end
@@ -155,14 +155,14 @@ defmodule ConnGRPC.Channel do
 
     case grpc_stub.connect(address, opts) do
       {:ok, channel} ->
-        log(state, "Connected")
+        debug(state, "Connected")
         state.on_connect.()
         {:noreply, %{state | channel: channel} |> reset_backoff()}
 
       {:error, error} ->
         {retry_delay, state} = increment_backoff(state)
         Process.send_after(self(), :connect, retry_delay)
-        log(state, "Connection failed. Retrying in #{retry_delay}ms. Error: #{inspect(error)}.")
+        debug(state, "Connection failed. Retrying in #{retry_delay}ms. Error: #{inspect(error)}.")
         {:noreply, state}
     end
   end
@@ -180,9 +180,9 @@ defmodule ConnGRPC.Channel do
     {delay, put_in(state.backoff.state, backoff_state)}
   end
 
-  defp log(%{debug: false}, _message), do: nil
+  defp debug(%{debug: false}, _message), do: nil
 
-  defp log(%{debug: true, name: name}, message) do
+  defp debug(%{debug: true, name: name}, message) do
     prefix = "[ConnGRPC.Channel:#{inspect(name || self())}] "
     Logger.debug(prefix <> message)
   end
