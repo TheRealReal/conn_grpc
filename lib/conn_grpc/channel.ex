@@ -1,5 +1,5 @@
 defmodule ConnGRPC.Channel do
-  @doc """
+  @moduledoc """
   A process that manages a gRPC channel.
 
   When `ConnGRPC.Channel` is started, it will create a gRPC connection, which can be fetched with
