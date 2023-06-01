@@ -1,6 +1,10 @@
 defmodule GRPC.Client.TestAdapters do
+  @moduledoc false
+
   # gRPC adapter that always succeeds to connect
   defmodule Success do
+    @moduledoc false
+
     def connect(channel, _opts) do
       {:ok, %{channel | adapter_payload: %{ref: make_ref()}}}
     end
@@ -10,6 +14,8 @@ defmodule GRPC.Client.TestAdapters do
 
   # gRPC adapter that always fails to connect
   defmodule Error do
+    @moduledoc false
+
     def connect(channel, _opts) do
       {:error, "down"}
     end
@@ -33,6 +39,8 @@ defmodule GRPC.Client.TestAdapters do
   #
   # {:ok, %GRPC.Channel{}} = GRPC.Client.TestAdapters.Stateful.connect("address", [])  # connects
   defmodule Stateful do
+    @moduledoc false
+
     def start_link(state) when state in [:up, :down] do
       Agent.start_link(fn -> state end, name: __MODULE__)
     end
