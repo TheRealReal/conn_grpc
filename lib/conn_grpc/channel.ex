@@ -148,30 +148,27 @@ defmodule ConnGRPC.Channel do
   @impl true
   def handle_info(:connect, state), do: connect(state)
 
-  # Start - Gun callbacks
+  # START - Gun callbacks
+
   def handle_info({:gun_down, _, _, _, _}, state) do
-    debug(state, "Gun disconnected")
-    state.on_disconnect.()
-    {:noreply, state}
+    {:noreply, handle_disconnect(state)}
   end
 
-  def handle_info({:gun_up, _, _}, state) do
-    debug(state, "Gun reconnected")
-    state.on_connect.()
-    {:noreply, state}
-  end
-  # End - Gun callbacks
+  def handle_info({:gun_up, _, _}, state), do: {:noreply, state}
 
-  # Start - Mint callbacks
-  def handle_info({:EXIT, _pid, %Mint.TransportError{}}, state), do: {:noreply, state}
+  # END - Gun callbacks
 
-  def handle_info({:elixir_grpc, :connection_down, pid}, state) do
-    debug(state, "Connection down")
-    state.on_disconnect.()
-    Process.exit(pid, :normal)
-    {:noreply, schedule_retry(state)}
+  # START - Mint callbacks
+
+  # Mint adapter traps exits, this is called when the connection goes down
+  def handle_info({:EXIT, _pid, _}, state), do: {:noreply, state}
+
+  # This is also called with the Mint adapter when connection goes down
+  def handle_info({:elixir_grpc, :connection_down, _pid}, state) do
+    {:noreply, handle_disconnect(state)}
   end
-  # End - Mint callbacks
+
+  # END - Mint callbacks
 
   @impl true
   def handle_call(:get, _from, state) do
@@ -199,6 +196,13 @@ defmodule ConnGRPC.Channel do
         debug(state, "Connection failed: #{inspect(error)}")
         {:noreply, schedule_retry(state)}
     end
+  end
+
+  defp handle_disconnect(state) do
+    debug(state, "Connection down")
+    state = %{state | channel: state.channel.adapter.disconnect(state.channel)}
+    state.on_disconnect.()
+    schedule_retry(state)
   end
 
   defp schedule_retry(state) do
