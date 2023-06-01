@@ -203,7 +203,8 @@ defmodule ConnGRPC.Channel do
   defp handle_disconnect(state) do
     debug(state, "Connection down")
     state.on_disconnect.()
-    state = %{state | channel: state.channel.adapter.disconnect(state.channel)}
+    state.channel.adapter.disconnect(state.channel)
+    state = %{state | channel: nil}
     schedule_retry(state)
   end
 
