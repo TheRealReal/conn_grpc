@@ -73,6 +73,9 @@ defmodule ConnGRPC.Channel do
 
   require Logger
 
+  @backoff_module ConnGRPC.Backoff.Exponential
+  @backoff_opts [min: 1000, max: 30_000]
+
   # Client
 
   @doc """
@@ -116,8 +119,8 @@ defmodule ConnGRPC.Channel do
   def init(options) do
     state = %{
       backoff: %{
-        module: Keyword.get(options, :backoff_module, ConnGRPC.Backoff.Exponential),
-        opts: Keyword.get(options, :backoff, min: 1000, max: 30_000)
+        module: Keyword.get(options, :backoff_module, @backoff_module),
+        opts: Keyword.get(options, :backoff, @backoff_opts)
       },
       channel: nil,
       config: %{
