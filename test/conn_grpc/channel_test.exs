@@ -70,21 +70,8 @@ defmodule ConnGRPC.ChannelTest do
     end
   end
 
-  describe "Gun message handling" do
-    test "calls on_disconnect when Gun disconnects" do
-      {:ok, channel_pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success],
-        on_connect: fn -> send(:test, :connect_called) end,
-        on_disconnect: fn -> send(:test, :disconnect_called) end
-      )
-
-      assert_receive :connect_called
-      send(channel_pid, {:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
-      assert_receive :disconnect_called
-    end
-
-    test "attempts to reconnect" do
+  describe "Gun disconnect handling" do
+    test "attempts to reconnect when receiving :gun_down tuple" do
       {:ok, channel_pid} = Channel.start_link(
         address: "address",
         opts: [adapter: GRPC.Client.TestAdapters.Success],
@@ -95,30 +82,14 @@ defmodule ConnGRPC.ChannelTest do
 
       assert_receive :connect_called
 
-      send(channel_pid, {:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
+      send(channel_pid, {:gun_down, fake_pid(), :http2, :normal, []})
       assert_receive :disconnect_called
       assert_receive :connect_called
     end
   end
 
-  describe "Mint message handling" do
-    test "calls on_disconnect when Mint disconnects" do
-      {:ok, channel_pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success],
-        on_connect: fn -> send(:test, :connect_called) end,
-        on_disconnect: fn -> send(:test, :disconnect_called) end
-      )
-
-      assert_receive :connect_called
-
-      send(channel_pid, {:EXIT, :erlang.list_to_pid('<0.123.456>'), %Mint.TransportError{reason: :econnrefused}})
-      send(channel_pid, {:elixir_grpc, :connection_down, :erlang.list_to_pid('<0.123.456>')})
-
-      assert_receive :disconnect_called
-    end
-
-    test "attempts to reconnect" do
+  describe "Mint disconnect handling" do
+    test "attempts to reconnect when receiving :connection_down message" do
       {:ok, channel_pid} = Channel.start_link(
         address: "address",
         opts: [adapter: GRPC.Client.TestAdapters.Success],
@@ -129,8 +100,8 @@ defmodule ConnGRPC.ChannelTest do
 
       assert_receive :connect_called
 
-      send(channel_pid, {:EXIT, :erlang.list_to_pid('<0.123.456>'), %Mint.TransportError{reason: :econnrefused}})
-      send(channel_pid, {:elixir_grpc, :connection_down, :erlang.list_to_pid('<0.123.456>')})
+      send(channel_pid, {:EXIT, fake_pid(), %Mint.TransportError{reason: :econnrefused}})
+      send(channel_pid, {:elixir_grpc, :connection_down, fake_pid()})
 
       assert_receive :disconnect_called
       assert_receive :connect_called
@@ -250,4 +221,6 @@ defmodule ConnGRPC.ChannelTest do
       assert {:ok, %GRPC.Channel{}} = UsingTestChannel.get()
     end
   end
+
+  defp fake_pid, do: :erlang.list_to_pid('<0.123.456>')
 end
