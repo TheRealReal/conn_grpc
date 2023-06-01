@@ -90,7 +90,7 @@ defmodule ConnGRPC.ChannelTest do
         opts: [adapter: GRPC.Client.TestAdapters.Success],
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end,
-        backoff_module: NoBackoff
+        backoff_module: ConnGRPC.Backoff.NoBackoff
       )
 
       assert_receive :connect_called
@@ -124,7 +124,7 @@ defmodule ConnGRPC.ChannelTest do
         opts: [adapter: GRPC.Client.TestAdapters.Success],
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end,
-        backoff_module: NoBackoff
+        backoff_module: ConnGRPC.Backoff.NoBackoff
       )
 
       assert_receive :connect_called
@@ -213,86 +213,6 @@ defmodule ConnGRPC.ChannelTest do
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 3}}
 
       GRPC.Client.TestAdapters.Stateful.set_success(true)
-      assert_receive {FakeBackoff, :reset_called, {:backoff_state, _}}
-    end
-  end
-
-  describe "Retry and backoff" do
-    defmodule FakeBackoff do
-      @behaviour ConnGRPC.Backoff
-
-      @impl true
-      def new(arg) do
-        send(:test, {FakeBackoff, :new_called, arg})
-        {:backoff_state, 1}
-      end
-
-      @impl true
-      def backoff({:backoff_state, n} = arg) do
-        send(:test, {FakeBackoff, :backoff_called, arg})
-        {n, {:backoff_state, n + 1}}
-      end
-
-      @impl true
-      def reset({:backoff_state, _} = arg) do
-        send(:test, {FakeBackoff, :reset_called, arg})
-        {:backoff_state, 1}
-      end
-    end
-
-    test "inits backoff state on start" do
-      {:ok, _} =
-        Channel.start_link(
-          grpc_stub: FakeGRPC.SuccessStub,
-          backoff_module: FakeBackoff,
-          backoff: [min: 500, max: 15_000],
-          address: "address"
-        )
-
-      assert_receive {FakeBackoff, :new_called, [min: 500, max: 15_000]}
-    end
-
-    test "uses default opts when not specified" do
-      {:ok, _} =
-        Channel.start_link(
-          grpc_stub: FakeGRPC.SuccessStub,
-          backoff_module: FakeBackoff,
-          address: "address"
-        )
-
-      assert_receive {FakeBackoff, :new_called, [min: 1000, max: 30_000]}
-    end
-
-    test "retries on every failed attempt and updates backoff state" do
-      {:ok, _} =
-        Channel.start_link(
-          grpc_stub: FakeGRPC.ErrorStub,
-          backoff_module: FakeBackoff,
-          address: "address"
-        )
-
-      assert_receive {FakeBackoff, :new_called, _}
-      assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 1}}
-      assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 2}}
-      assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 3}}
-    end
-
-    test "resets backoff state on success" do
-      FakeGRPC.StatefulStub.init(success: false)
-
-      {:ok, _} =
-        Channel.start_link(
-          grpc_stub: FakeGRPC.StatefulStub,
-          backoff_module: FakeBackoff,
-          address: "address"
-        )
-
-      assert_receive {FakeBackoff, :new_called, _}
-      assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 1}}
-      assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 2}}
-      assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 3}}
-
-      FakeGRPC.StatefulStub.set_success(true)
       assert_receive {FakeBackoff, :reset_called, {:backoff_state, _}}
     end
   end
