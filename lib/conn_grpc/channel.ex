@@ -18,9 +18,6 @@ defmodule ConnGRPC.Channel do
         use ConnGRPC.Channel, address: "localhost:50051", opts: []
       end
 
-  The format of `address` and `opts` is the same used by
-  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
-
   Then, you can add the module to your application supervision tree.
 
       defmodule Demo.Application do
@@ -63,19 +60,49 @@ defmodule ConnGRPC.Channel do
         end
       end
 
-  The format of `address` and `opts` is the same used by
-  [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
-
   To get the connection in your application, call:
 
       ConnGRPC.Channel.get_channel(:demo_channel)
 
+  ## Options available
+
+  For all options available, see `start_link/1`.
   """
 
   use GenServer
 
+  require Logger
+
+  @backoff_module ConnGRPC.Backoff.Exponential
+  @backoff_opts [min: 1000, max: 30_000]
+
   # Client
 
+  @doc """
+  Starts and links process that keeps a persistent gRPC channel.
+
+  ### Options
+
+    * `:address` - The gRPC server address. For more details,
+    see [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+
+    * `:opts` - Options for Elixir gRPC. For more details,
+    see [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+
+    * `:name` - A name to register the started process (see the `:name` option
+      in `GenServer.start_link/3`)
+
+    * `:backoff` - Minimum and maximum exponential backoff intervals (default: `[min: 1000, max: 30_000]`)
+
+    * `:backoff_module` - Backoff module to be used (default: `ConnGRPC.Backoff.Exponential`).
+    If you'd like to implement your own backoff, see the `ConnRPC.Backoff` behavior.
+
+    * `:debug` - Write debug logs (default: `false`)
+
+    * `:on_connect` - Function to run on connect (0-arity)
+
+    * `:on_disconnect` - Function to run on disconnect (0-arity)
+  """
   def start_link(options) when is_list(options) do
     GenServer.start_link(__MODULE__, options, name: options[:name])
   end
@@ -91,17 +118,30 @@ defmodule ConnGRPC.Channel do
   @impl true
   def init(options) do
     state = %{
+      backoff: %{
+        module: Keyword.get(options, :backoff_module, @backoff_module),
+        opts: Keyword.get(options, :backoff, @backoff_opts)
+      },
       channel: nil,
       config: %{
         grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
         address: Keyword.fetch!(options, :address),
         opts: Keyword.get(options, :opts, [])
       },
+      debug: Keyword.get(options, :debug, false),
+      name: Keyword.get(options, :name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
       on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end)
     }
 
+    state = initialize_backoff(state)
+
     {:ok, state, {:continue, :connect}}
+  end
+
+  defp initialize_backoff(state) do
+    %{module: module, opts: opts} = state.backoff
+    put_in(state.backoff[:state], module.new(opts))
   end
 
   @impl true
@@ -111,11 +151,13 @@ defmodule ConnGRPC.Channel do
   def handle_info(:connect, state), do: connect(state)
 
   def handle_info({:gun_down, _, _, _, _}, state) do
+    debug(state, "Gun disconnected")
     state.on_disconnect.()
     {:noreply, state}
   end
 
   def handle_info({:gun_up, _, _}, state) do
+    debug(state, "Gun reconnected")
     state.on_connect.()
     {:noreply, state}
   end
@@ -136,13 +178,36 @@ defmodule ConnGRPC.Channel do
 
     case grpc_stub.connect(address, opts) do
       {:ok, channel} ->
+        debug(state, "Connected")
         state.on_connect.()
-        {:noreply, Map.put(state, :channel, channel)}
+        {:noreply, %{state | channel: channel} |> reset_backoff()}
 
-      {:error, _error} ->
-        Process.send_after(self(), :connect, 2000)
+      {:error, error} ->
+        {retry_delay, state} = increment_backoff(state)
+        Process.send_after(self(), :connect, retry_delay)
+        debug(state, "Connection failed. Retrying in #{retry_delay}ms. Error: #{inspect(error)}.")
         {:noreply, state}
     end
+  end
+
+  defp reset_backoff(state) do
+    %{module: backoff_module} = state.backoff
+    update_in(state.backoff.state, &backoff_module.reset/1)
+  end
+
+  defp increment_backoff(state) do
+    %{module: backoff_module, state: backoff_state} = state.backoff
+
+    {delay, backoff_state} = backoff_module.backoff(backoff_state)
+
+    {delay, put_in(state.backoff.state, backoff_state)}
+  end
+
+  defp debug(%{debug: false}, _message), do: nil
+
+  defp debug(%{debug: true, name: name}, message) do
+    prefix = "[ConnGRPC.Channel:#{inspect(name || self())}] "
+    Logger.debug(prefix <> message)
   end
 
   defmacro __using__(use_opts \\ []) do
