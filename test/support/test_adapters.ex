@@ -1,4 +1,5 @@
 defmodule GRPC.Client.TestAdapters do
+  # gRPC adapter that always succeeds to connect
   defmodule Success do
     def connect(channel, _opts) do
       {:ok, %{channel | adapter_payload: %{ref: make_ref()}}}
@@ -7,14 +8,30 @@ defmodule GRPC.Client.TestAdapters do
     def disconnect(channel), do: {:ok, %{channel | adapter_payload: nil}}
   end
 
+  # gRPC adapter that always fails to connect
   defmodule Error do
     def connect(channel, _opts) do
-      {:error, "reason"}
+      {:error, "down"}
     end
 
     def disconnect(channel), do: {:ok, %{channel | adapter_payload: nil}}
   end
 
+  # gRPC adapter that succeeds or fails to connect based on current state.
+  #
+  # Usage:
+  #
+  # {:ok, _} = GRPC.Client.TestAdapters.Stateful.start_link(:up)                       # start in online mode
+  #
+  # {:ok, %GRPC.Channel{}} = GRPC.Client.TestAdapters.Stateful.connect("address", [])  # connects
+  #
+  # GRPC.Client.TestAdapters.Stateful.down()                                           # make it offline
+  #
+  # {:error, "down"} = GRPC.Client.TestAdapters.Stateful.connect("address", [])        # doesn't connect
+  #
+  # GRPC.Client.TestAdapters.Stateful.up()                                             # make it online
+  #
+  # {:ok, %GRPC.Channel{}} = GRPC.Client.TestAdapters.Stateful.connect("address", [])  # connects
   defmodule Stateful do
     def start_link(state) when state in [:up, :down] do
       Agent.start_link(fn -> state end, name: __MODULE__)
@@ -31,7 +48,7 @@ defmodule GRPC.Client.TestAdapters do
     def connect(channel, _opts) do
       case Agent.get(__MODULE__, & &1) do
         :up -> {:ok, %{channel | adapter_payload: %{ref: make_ref()}}}
-        :down -> {:error, "reason"}
+        :down -> {:error, "down"}
       end
     end
 

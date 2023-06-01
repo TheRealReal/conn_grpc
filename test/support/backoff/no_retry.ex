@@ -1,4 +1,6 @@
 defmodule ConnGRPC.Backoff.NoRetry do
+  @moduledoc false
+
   @behaviour ConnGRPC.Backoff
 
   @impl true
