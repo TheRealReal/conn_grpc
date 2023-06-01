@@ -138,7 +138,7 @@ defmodule ConnGRPC.PoolTest do
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Success],
           backoff_module: ConnGRPC.Backoff.NoRetry
-        ],
+        ]
       )
 
       :timer.sleep(100)

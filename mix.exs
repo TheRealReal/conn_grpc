@@ -23,8 +23,9 @@ defmodule ConnGRPC.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:grpc, github: "elixir-grpc/grpc"},
-      {:backoff, "~> 1.1"}
+      {:backoff, "~> 1.1"},
+      {:grpc, "~> 0.5", only: :test},
+      {:mint, "~> 1.4.2", only: :test},
     ]
   end
 
