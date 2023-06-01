@@ -128,22 +128,22 @@ defmodule ConnGRPC.ChannelTest do
         Channel.start_link(
           grpc_stub: FakeGRPC.SuccessStub,
           backoff_module: FakeBackoff,
-          address: "address"
-        )
-
-      assert_receive {FakeBackoff, :new_called, [min: 1000, max: 30_000]}
-    end
-
-    test "passes custom opts" do
-      {:ok, _} =
-        Channel.start_link(
-          grpc_stub: FakeGRPC.SuccessStub,
-          backoff_module: FakeBackoff,
           backoff: [min: 500, max: 15_000],
           address: "address"
         )
 
       assert_receive {FakeBackoff, :new_called, [min: 500, max: 15_000]}
+    end
+
+    test "uses default opts when not specified" do
+      {:ok, _} =
+        Channel.start_link(
+          grpc_stub: FakeGRPC.SuccessStub,
+          backoff_module: FakeBackoff,
+          address: "address"
+        )
+
+      assert_receive {FakeBackoff, :new_called, [min: 1000, max: 30_000]}
     end
 
     test "retries on every failed attempt and updates backoff state" do
