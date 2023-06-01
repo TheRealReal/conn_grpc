@@ -1,21 +1,15 @@
-# Demo
-
-**TODO: Add description**
+# ConnGRPC demo app
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `demo` to your list of dependencies in `mix.exs`:
+`mix deps.get`
 
-```elixir
-def deps do
-  [
-    {:demo, "~> 0.1.0"}
-  ]
-end
-```
+## Usage
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/demo>.
+Make sure there's a gRPC server listening at `localhost:50020`.
 
+Then, run this app with `iex -S mix run`
+
+- To get a standalone channel, call `MyChannel.get()`
+- To get a channel from the pool, call `MyPool.get_channel()`
+- To view the supervision tree, run `:observer.start()` and click in `Applications`
