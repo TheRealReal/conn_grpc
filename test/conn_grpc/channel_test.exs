@@ -105,8 +105,8 @@ defmodule ConnGRPC.ChannelTest do
       @behaviour ConnGRPC.Backoff
 
       @impl true
-      def new(_) do
-        send(:test, {FakeBackoff, :new_called})
+      def new(arg) do
+        send(:test, {FakeBackoff, :new_called, arg})
         {:backoff_state, 1}
       end
 
@@ -131,7 +131,19 @@ defmodule ConnGRPC.ChannelTest do
           address: "address"
         )
 
-      assert_receive {FakeBackoff, :new_called}
+      assert_receive {FakeBackoff, :new_called, [min: 1000, max: 30_000]}
+    end
+
+    test "passes custom opts" do
+      {:ok, _} =
+        Channel.start_link(
+          grpc_stub: FakeGRPC.SuccessStub,
+          backoff_module: FakeBackoff,
+          backoff: [min: 500, max: 15_000],
+          address: "address"
+        )
+
+      assert_receive {FakeBackoff, :new_called, [min: 500, max: 15_000]}
     end
 
     test "retries on every failed attempt and updates backoff state" do
@@ -142,7 +154,7 @@ defmodule ConnGRPC.ChannelTest do
           address: "address"
         )
 
-      assert_receive {FakeBackoff, :new_called}
+      assert_receive {FakeBackoff, :new_called, _}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 1}}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 2}}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 3}}
@@ -158,7 +170,7 @@ defmodule ConnGRPC.ChannelTest do
           address: "address"
         )
 
-      assert_receive {FakeBackoff, :new_called}
+      assert_receive {FakeBackoff, :new_called, _}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 1}}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 2}}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 3}}
