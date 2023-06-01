@@ -16,7 +16,7 @@ defmodule GRPC.Client.TestAdapters do
   defmodule Error do
     @moduledoc false
 
-    def connect(channel, _opts) do
+    def connect(_channel, _opts) do
       {:error, "down"}
     end
 
