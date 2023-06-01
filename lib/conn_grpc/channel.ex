@@ -150,6 +150,8 @@ defmodule ConnGRPC.Channel do
 
   # START - Gun callbacks
 
+  # By default, Gun reconnects automatically. However, to keep a single interface
+  # for backoff, we do not use its retry and handle it on our own.
   def handle_info({:gun_down, _, _, _, _}, state) do
     {:noreply, handle_disconnect(state)}
   end
