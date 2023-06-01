@@ -128,7 +128,8 @@ defmodule ConnGRPC.Channel do
       debug: Keyword.get(options, :debug, false),
       name: Keyword.get(options, :name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
-      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end)
+      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end),
+      retry_timer_ref: nil
     }
 
     state = initialize_backoff(state)
@@ -147,6 +148,7 @@ defmodule ConnGRPC.Channel do
   @impl true
   def handle_info(:connect, state), do: connect(state)
 
+  # Start - Gun callbacks
   def handle_info({:gun_down, _, _, _, _}, state) do
     debug(state, "Gun disconnected")
     state.on_disconnect.()
@@ -158,6 +160,18 @@ defmodule ConnGRPC.Channel do
     state.on_connect.()
     {:noreply, state}
   end
+  # End - Gun callbacks
+
+  # Start - Mint callbacks
+  def handle_info({:EXIT, _pid, %Mint.TransportError{}}, state), do: {:noreply, state}
+
+  def handle_info({:elixir_grpc, :connection_down, pid}, state) do
+    debug(state, "Connection down")
+    state.on_disconnect.()
+    Process.exit(pid, :normal)
+    {:noreply, schedule_retry(state)}
+  end
+  # End - Mint callbacks
 
   @impl true
   def handle_call(:get, _from, state) do
@@ -171,6 +185,8 @@ defmodule ConnGRPC.Channel do
   end
 
   defp connect(state) do
+    state = clear_timer(state)
+
     %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
 
     case grpc_stub.connect(address, opts) do
@@ -180,11 +196,24 @@ defmodule ConnGRPC.Channel do
         {:noreply, %{state | channel: channel} |> reset_backoff()}
 
       {:error, error} ->
-        {retry_delay, state} = increment_backoff(state)
-        Process.send_after(self(), :connect, retry_delay)
-        debug(state, "Connection failed. Retrying in #{retry_delay}ms. Error: #{inspect(error)}.")
-        {:noreply, state}
+        debug(state, "Connection failed: #{inspect(error)}")
+        {:noreply, schedule_retry(state)}
     end
+  end
+
+  defp schedule_retry(state) do
+    state = clear_timer(state)
+    {retry_delay, state} = increment_backoff(state)
+    retry_timer_ref = Process.send_after(self(), :connect, retry_delay)
+    debug(state, "Retrying in #{retry_delay}ms")
+    %{state | retry_timer_ref: retry_timer_ref}
+  end
+
+  defp clear_timer(%{retry_timer_ref: nil} = state), do: state
+
+  defp clear_timer(%{retry_timer_ref: timer} = state) do
+    Process.cancel_timer(timer)
+    %{state | retry_timer_ref: nil}
   end
 
   defp reset_backoff(state) do
