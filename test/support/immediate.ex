@@ -1,4 +1,4 @@
-defmodule ConnGRPC.Backoff.NoBackoff do
+defmodule ConnGRPC.Backoff.Immediate do
   @behaviour ConnGRPC.Backoff
 
   @impl true

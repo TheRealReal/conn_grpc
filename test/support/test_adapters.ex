@@ -16,18 +16,22 @@ defmodule GRPC.Client.TestAdapters do
   end
 
   defmodule Stateful do
-    def init(opts) do
-      Agent.start_link(fn -> %{success: opts[:success]} end, name: __MODULE__)
+    def start_link(state) when state in [:up, :down] do
+      Agent.start_link(fn -> state end, name: __MODULE__)
     end
 
-    def set_success(success) do
-      Agent.update(__MODULE__, fn _ -> %{success: success} end)
+    def up do
+      Agent.update(__MODULE__, fn _ -> :up end)
+    end
+
+    def down do
+      Agent.update(__MODULE__, fn _ -> :down end)
     end
 
     def connect(channel, _opts) do
       case Agent.get(__MODULE__, & &1) do
-        %{success: true} -> {:ok, %{channel | adapter_payload: %{ref: make_ref()}}}
-        %{success: false} -> {:error, "reason"}
+        :up -> {:ok, %{channel | adapter_payload: %{ref: make_ref()}}}
+        :down -> {:error, "reason"}
       end
     end
 

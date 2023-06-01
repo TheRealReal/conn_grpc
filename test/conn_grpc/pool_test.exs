@@ -65,15 +65,18 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]],
+        backoff_module: ConnGRPC.Backoff.NoRetry
       )
 
       :timer.sleep(100)
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
+      Enum.at(pids, 1) |> send_disconnect_msg()
       :timer.sleep(100)
+
+      # It won't reconnect because we're using `ConnGRPC.Backoff.NoRetry`
 
       assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
       assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
@@ -90,7 +93,7 @@ defmodule ConnGRPC.PoolTest do
         channel: [
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Success],
-          backoff_module: ConnGRPC.Backoff.NoBackoff
+          backoff_module: ConnGRPC.Backoff.Immediate
         ]
       )
 
@@ -98,11 +101,9 @@ defmodule ConnGRPC.PoolTest do
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
-      :timer.sleep(100)
+      Enum.at(pids, 1) |> send_disconnect_msg()
 
-      # Simulate reconnect
-      Enum.at(pids, 1) |> simulate_connect()
+      # It will quickly reconnect because we're using `ConnGRPC.Backoff.Immediate` and the channel is up
       :timer.sleep(100)
 
       assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
@@ -133,7 +134,11 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoRetry
+        ],
       )
 
       :timer.sleep(100)
@@ -141,7 +146,9 @@ defmodule ConnGRPC.PoolTest do
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
       disconnected_pid = Enum.at(pids, 1)
-      simulate_disconnect(disconnected_pid)
+      send_disconnect_msg(disconnected_pid)
+
+      # It won't reconnect because we're using `ConnGRPC.Backoff.NoRetry`
       :timer.sleep(100)
 
       result = Pool.get_all_pids(pool_name)
@@ -157,7 +164,7 @@ defmodule ConnGRPC.PoolTest do
         channel: [
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Success],
-          backoff_module: ConnGRPC.Backoff.NoBackoff
+          backoff_module: ConnGRPC.Backoff.Immediate
         ]
       )
 
@@ -165,11 +172,10 @@ defmodule ConnGRPC.PoolTest do
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
+      Enum.at(pids, 1) |> send_disconnect_msg()
       :timer.sleep(100)
 
-      # Simulate connect
-      Enum.at(pids, 1) |> simulate_connect()
+      # It will quickly reconnect because we're using `ConnGRPC.Backoff.Immediate` and the channel is up
       :timer.sleep(100)
 
       result = Pool.get_all_pids(pool_name)
@@ -198,11 +204,7 @@ defmodule ConnGRPC.PoolTest do
     end
   end
 
-  defp simulate_connect(pid) do
-    send(pid, {:gun_up, :erlang.list_to_pid('<0.123.456>'), :http2})
-  end
+  defp send_disconnect_msg(pid), do: send(pid, {:gun_down, fake_pid(), :http2, :normal, []})
 
-  defp simulate_disconnect(pid) do
-    send(pid, {:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
-  end
+  defp fake_pid, do: :erlang.list_to_pid('<0.123.456>')
 end

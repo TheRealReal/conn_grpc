@@ -72,38 +72,51 @@ defmodule ConnGRPC.ChannelTest do
 
   describe "Gun disconnect handling" do
     test "attempts to reconnect when receiving :gun_down tuple" do
+      GRPC.Client.TestAdapters.Stateful.start_link(:up)
+
       {:ok, channel_pid} = Channel.start_link(
         address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success],
+        opts: [adapter: GRPC.Client.TestAdapters.Stateful],
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end,
-        backoff_module: ConnGRPC.Backoff.NoBackoff
+        backoff_module: ConnGRPC.Backoff.Immediate
       )
 
       assert_receive :connect_called
 
+      GRPC.Client.TestAdapters.Stateful.down()
       send(channel_pid, {:gun_down, fake_pid(), :http2, :normal, []})
+
       assert_receive :disconnect_called
+      refute_receive :connect_called
+
+      GRPC.Client.TestAdapters.Stateful.up()
       assert_receive :connect_called
     end
   end
 
   describe "Mint disconnect handling" do
     test "attempts to reconnect when receiving :connection_down message" do
+      GRPC.Client.TestAdapters.Stateful.start_link(:up)
+
       {:ok, channel_pid} = Channel.start_link(
         address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success],
+        opts: [adapter: GRPC.Client.TestAdapters.Stateful],
         on_connect: fn -> send(:test, :connect_called) end,
         on_disconnect: fn -> send(:test, :disconnect_called) end,
-        backoff_module: ConnGRPC.Backoff.NoBackoff
+        backoff_module: ConnGRPC.Backoff.Immediate
       )
 
       assert_receive :connect_called
 
+      GRPC.Client.TestAdapters.Stateful.down()
       send(channel_pid, {:EXIT, fake_pid(), %Mint.TransportError{reason: :econnrefused}})
       send(channel_pid, {:elixir_grpc, :connection_down, fake_pid()})
 
       assert_receive :disconnect_called
+      refute_receive :connect_called
+
+      GRPC.Client.TestAdapters.Stateful.up()
       assert_receive :connect_called
     end
   end
@@ -169,7 +182,7 @@ defmodule ConnGRPC.ChannelTest do
     end
 
     test "resets backoff state on success" do
-      GRPC.Client.TestAdapters.Stateful.init(success: false)
+      GRPC.Client.TestAdapters.Stateful.start_link(:down)
 
       {:ok, _} =
         Channel.start_link(
@@ -183,7 +196,7 @@ defmodule ConnGRPC.ChannelTest do
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 2}}
       assert_receive {FakeBackoff, :backoff_called, {:backoff_state, 3}}
 
-      GRPC.Client.TestAdapters.Stateful.set_success(true)
+      GRPC.Client.TestAdapters.Stateful.up()
       assert_receive {FakeBackoff, :reset_called, {:backoff_state, _}}
     end
   end
