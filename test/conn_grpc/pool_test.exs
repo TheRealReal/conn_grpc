@@ -13,7 +13,7 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
     end
 
@@ -21,7 +21,7 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, pid} = Pool.start_link(
         name: :test_pool,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       assert Process.whereis(:test_pool) == pid
@@ -33,17 +33,17 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
       refute channel2 == channel3
@@ -53,7 +53,7 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.ErrorStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]]
       )
 
       :timer.sleep(100)
@@ -65,7 +65,7 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       :timer.sleep(100)
@@ -75,10 +75,10 @@ defmodule ConnGRPC.PoolTest do
       Enum.at(pids, 1) |> simulate_disconnect()
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
     end
@@ -87,7 +87,11 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoBackoff
+        ]
       )
 
       :timer.sleep(100)
@@ -101,12 +105,9 @@ defmodule ConnGRPC.PoolTest do
       Enum.at(pids, 1) |> simulate_connect()
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
       refute channel2 == channel3
@@ -118,7 +119,7 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       :timer.sleep(100)
@@ -132,7 +133,7 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       :timer.sleep(100)
@@ -153,7 +154,11 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoBackoff
+        ]
       )
 
       :timer.sleep(100)
@@ -176,7 +181,10 @@ defmodule ConnGRPC.PoolTest do
   describe "__using__" do
     test "allows defining pool as a module" do
       defmodule UsingTestPool do
-        use ConnGRPC.Pool, pool_size: 3, channel: [address: "address", grpc_stub: FakeGRPC.SuccessStub]
+        use ConnGRPC.Pool, pool_size: 3, channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success]
+        ]
       end
 
       Supervisor.start_link([UsingTestPool], strategy: :one_for_one)
@@ -185,7 +193,7 @@ defmodule ConnGRPC.PoolTest do
 
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{}} = UsingTestPool.get_channel()
+      assert {:ok, %GRPC.Channel{}} = UsingTestPool.get_channel()
       assert is_list(UsingTestPool.get_all_pids())
     end
   end
