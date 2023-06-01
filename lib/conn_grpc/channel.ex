@@ -95,7 +95,7 @@ defmodule ConnGRPC.Channel do
     * `:backoff` - Minimum and maximum exponential backoff intervals (default: `[min: 1000, max: 30_000]`)
 
     * `:backoff_module` - Backoff module to be used (default: `ConnGRPC.Backoff.Exponential`).
-    If you'd like to implement your own backoff, see the `ConnRPC.Backoff` behavior.
+    If you'd like to implement your own backoff, see the `ConnGRPC.Backoff` behavior.
 
     * `:debug` - Write debug logs (default: `false`)
 
