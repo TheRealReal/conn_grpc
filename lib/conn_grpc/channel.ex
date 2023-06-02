@@ -174,7 +174,7 @@ defmodule ConnGRPC.Channel do
   # END - Mint callbacks
 
   def handle_info(msg, state) do
-    debug("Unexpected message: #{inspect(msg)}")
+    debug(state, "Unexpected message: #{inspect(msg)}")
     {:noreply, state}
   end
 
