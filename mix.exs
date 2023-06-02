@@ -20,15 +20,12 @@ defmodule ConnGRPC.MixProject do
 
   def application do
     [
-      extra_applications: extra_applications(Mix.env())
+      extra_applications: [:logger]
     ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
-
-  defp extra_applications(:test), do: extra_applications(:default) ++ [:logger]
-  defp extra_applications(_), do: []
 
   defp deps do
     [
