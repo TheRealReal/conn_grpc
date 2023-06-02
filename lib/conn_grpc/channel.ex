@@ -95,7 +95,7 @@ defmodule ConnGRPC.Channel do
     * `:backoff` - Minimum and maximum exponential backoff intervals (default: `[min: 1000, max: 30_000]`)
 
     * `:backoff_module` - Backoff module to be used (default: `ConnGRPC.Backoff.Exponential`).
-    If you'd like to implement your own backoff, see the `ConnRPC.Backoff` behavior.
+    If you'd like to implement your own backoff, see the `ConnGRPC.Backoff` behavior.
 
     * `:debug` - Write debug logs (default: `false`)
 
@@ -131,7 +131,8 @@ defmodule ConnGRPC.Channel do
       debug: Keyword.get(options, :debug, false),
       name: Keyword.get(options, :name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
-      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end)
+      on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end),
+      retry_timer_ref: nil
     }
 
     state = initialize_backoff(state)
@@ -150,15 +151,30 @@ defmodule ConnGRPC.Channel do
   @impl true
   def handle_info(:connect, state), do: connect(state)
 
+  # START - Gun callbacks
+
+  # By default, Gun reconnects automatically. However, to keep a single interface
+  # for backoff, we do not use its retry and handle it on our own.
   def handle_info({:gun_down, _, _, _, _}, state) do
-    debug(state, "Gun disconnected")
-    state.on_disconnect.()
-    {:noreply, state}
+    {:noreply, handle_disconnect(state)}
   end
 
-  def handle_info({:gun_up, _, _}, state) do
-    debug(state, "Gun reconnected")
-    state.on_connect.()
+  # END - Gun callbacks
+
+  # START - Mint callbacks
+
+  # Mint adapter traps exits, this is called when the connection goes down
+  def handle_info({:EXIT, _pid, _}, state), do: {:noreply, state}
+
+  # This is also called with the Mint adapter when connection goes down
+  def handle_info({:elixir_grpc, :connection_down, _pid}, state) do
+    {:noreply, handle_disconnect(state)}
+  end
+
+  # END - Mint callbacks
+
+  def handle_info(msg, state) do
+    debug(state, "Unexpected message: #{inspect(msg)}")
     {:noreply, state}
   end
 
@@ -173,7 +189,7 @@ defmodule ConnGRPC.Channel do
     {:reply, response, state}
   end
 
-  defp connect(state) do
+  defp connect(%{channel: nil} = state) do
     %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
 
     case grpc_stub.connect(address, opts) do
@@ -183,11 +199,34 @@ defmodule ConnGRPC.Channel do
         {:noreply, %{state | channel: channel} |> reset_backoff()}
 
       {:error, error} ->
-        {retry_delay, state} = increment_backoff(state)
-        Process.send_after(self(), :connect, retry_delay)
-        debug(state, "Connection failed. Retrying in #{retry_delay}ms. Error: #{inspect(error)}.")
-        {:noreply, state}
+        debug(state, "Connection failed: #{inspect(error)}")
+        {:noreply, schedule_retry(state)}
     end
+  end
+
+  defp connect(state), do: {:noreply, state}
+
+  defp handle_disconnect(state) do
+    debug(state, "Connection down")
+    state.on_disconnect.()
+    state.channel.adapter.disconnect(state.channel)
+    state = %{state | channel: nil}
+    schedule_retry(state)
+  end
+
+  defp schedule_retry(state) do
+    state = clear_timer(state)
+    {retry_delay, state} = increment_backoff(state)
+    retry_timer_ref = Process.send_after(self(), :connect, retry_delay)
+    debug(state, "Retrying in #{retry_delay}ms")
+    %{state | retry_timer_ref: retry_timer_ref}
+  end
+
+  defp clear_timer(%{retry_timer_ref: nil} = state), do: state
+
+  defp clear_timer(%{retry_timer_ref: timer} = state) do
+    Process.cancel_timer(timer)
+    %{state | retry_timer_ref: nil}
   end
 
   defp reset_backoff(state) do

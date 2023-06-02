@@ -13,7 +13,7 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
     end
 
@@ -21,7 +21,7 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, pid} = Pool.start_link(
         name: :test_pool,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       assert Process.whereis(:test_pool) == pid
@@ -33,17 +33,17 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
       refute channel2 == channel3
@@ -53,7 +53,7 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.ErrorStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]]
       )
 
       :timer.sleep(100)
@@ -65,20 +65,23 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]],
+        backoff_module: ConnGRPC.Backoff.NoRetry
       )
 
       :timer.sleep(100)
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
+      Enum.at(pids, 1) |> send_disconnect_msg()
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
+      # It won't reconnect because we're using `ConnGRPC.Backoff.NoRetry`
+
+      assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
     end
@@ -87,26 +90,25 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 3,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.Immediate
+        ]
       )
 
       :timer.sleep(100)
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
+      Enum.at(pids, 1) |> send_disconnect_msg()
+
+      # It will quickly reconnect because we're using `ConnGRPC.Backoff.Immediate` and the channel is up
       :timer.sleep(100)
 
-      # Simulate reconnect
-      Enum.at(pids, 1) |> simulate_connect()
-      :timer.sleep(100)
-
-      assert {:ok, %FakeGRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel1} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel2} = Pool.get_channel(pool_name)
-      assert {:ok, %FakeGRPC.Channel{} = ^channel3} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel1} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel2} = Pool.get_channel(pool_name)
+      assert {:ok, %GRPC.Channel{} = channel3} = Pool.get_channel(pool_name)
 
       refute channel1 == channel2
       refute channel2 == channel3
@@ -118,7 +120,7 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
       )
 
       :timer.sleep(100)
@@ -132,7 +134,11 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoRetry
+        ]
       )
 
       :timer.sleep(100)
@@ -140,7 +146,9 @@ defmodule ConnGRPC.PoolTest do
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
       disconnected_pid = Enum.at(pids, 1)
-      simulate_disconnect(disconnected_pid)
+      send_disconnect_msg(disconnected_pid)
+
+      # It won't reconnect because we're using `ConnGRPC.Backoff.NoRetry`
       :timer.sleep(100)
 
       result = Pool.get_all_pids(pool_name)
@@ -153,18 +161,21 @@ defmodule ConnGRPC.PoolTest do
       {:ok, _} = Pool.start_link(
         name: pool_name,
         pool_size: 5,
-        channel: [grpc_stub: FakeGRPC.SuccessStub, address: "address"]
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.Immediate
+        ]
       )
 
       :timer.sleep(100)
 
       # Simulate disconnect
       pids = Pool.get_all_pids(pool_name)
-      Enum.at(pids, 1) |> simulate_disconnect()
+      Enum.at(pids, 1) |> send_disconnect_msg()
       :timer.sleep(100)
 
-      # Simulate connect
-      Enum.at(pids, 1) |> simulate_connect()
+      # It will quickly reconnect because we're using `ConnGRPC.Backoff.Immediate` and the channel is up
       :timer.sleep(100)
 
       result = Pool.get_all_pids(pool_name)
@@ -176,7 +187,10 @@ defmodule ConnGRPC.PoolTest do
   describe "__using__" do
     test "allows defining pool as a module" do
       defmodule UsingTestPool do
-        use ConnGRPC.Pool, pool_size: 3, channel: [address: "address", grpc_stub: FakeGRPC.SuccessStub]
+        use ConnGRPC.Pool, pool_size: 3, channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success]
+        ]
       end
 
       Supervisor.start_link([UsingTestPool], strategy: :one_for_one)
@@ -185,16 +199,12 @@ defmodule ConnGRPC.PoolTest do
 
       :timer.sleep(100)
 
-      assert {:ok, %FakeGRPC.Channel{}} = UsingTestPool.get_channel()
+      assert {:ok, %GRPC.Channel{}} = UsingTestPool.get_channel()
       assert is_list(UsingTestPool.get_all_pids())
     end
   end
 
-  defp simulate_connect(pid) do
-    send(pid, {:gun_up, :erlang.list_to_pid('<0.123.456>'), :http2})
-  end
+  defp send_disconnect_msg(pid), do: send(pid, {:gun_down, fake_pid(), :http2, :normal, []})
 
-  defp simulate_disconnect(pid) do
-    send(pid, {:gun_down, :erlang.list_to_pid('<0.123.456>'), :http2, :normal, []})
-  end
+  defp fake_pid, do: :erlang.list_to_pid('<0.123.456>')
 end

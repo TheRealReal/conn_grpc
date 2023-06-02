@@ -31,6 +31,7 @@ defmodule ConnGRPC.MixProject do
     [
       {:backoff, "~> 1.1"},
       {:grpc, "~> 0.0", only: :test},
+      {:mint, "~> 1.4.2", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
