@@ -189,9 +189,7 @@ defmodule ConnGRPC.Channel do
     {:reply, response, state}
   end
 
-  defp connect(state) do
-    state = clear_timer(state)
-
+  defp connect(%{channel: nil} = state) do
     %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
 
     case grpc_stub.connect(address, opts) do
@@ -205,6 +203,8 @@ defmodule ConnGRPC.Channel do
         {:noreply, schedule_retry(state)}
     end
   end
+
+  defp connect(state), do: {:noreply, state}
 
   defp handle_disconnect(state) do
     debug(state, "Connection down")
