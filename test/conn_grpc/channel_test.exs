@@ -10,18 +10,20 @@ defmodule ConnGRPC.ChannelTest do
 
   describe "start_link/1" do
     test "starts the process successfully" do
-      assert {:ok, _pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success]
-      )
+      assert {:ok, _pid} =
+               Channel.start_link(
+                 address: "address",
+                 opts: [adapter: GRPC.Client.TestAdapters.Success]
+               )
     end
 
     test "names the process when `name` option is passed" do
-      assert {:ok, pid} = Channel.start_link(
-        name: :test_channel,
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success]
-      )
+      assert {:ok, pid} =
+               Channel.start_link(
+                 name: :test_channel,
+                 address: "address",
+                 opts: [adapter: GRPC.Client.TestAdapters.Success]
+               )
 
       assert Process.whereis(:test_channel) == pid
     end
@@ -36,34 +38,37 @@ defmodule ConnGRPC.ChannelTest do
         end
       end
 
-      {:ok, _pid} = Channel.start_link(
-        grpc_stub: CallArgsTest,
-        address: "address",
-        opts: [headers: [foo: "bar"]]
-      )
+      {:ok, _pid} =
+        Channel.start_link(
+          grpc_stub: CallArgsTest,
+          address: "address",
+          opts: [headers: [foo: "bar"]]
+        )
 
       assert_receive {CallArgsTest, :called_connect, "address", [headers: [foo: "bar"]]}
     end
 
     test "calls on_connect when connection succeeds" do
-      {:ok, _pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success],
-        on_connect: fn -> send(:test, :connect_called) end,
-        on_disconnect: fn -> send(:test, :disconnect_called) end
-      )
+      {:ok, _pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          on_connect: fn -> send(:test, :connect_called) end,
+          on_disconnect: fn -> send(:test, :disconnect_called) end
+        )
 
       assert_receive :connect_called
       refute_receive :connect_called
     end
 
     test "does not call connection callbacks when connection does not succeed" do
-      {:ok, _pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Error],
-        on_connect: fn -> send(:test, :connect_called) end,
-        on_disconnect: fn -> send(:test, :disconnect_called) end
-      )
+      {:ok, _pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Error],
+          on_connect: fn -> send(:test, :connect_called) end,
+          on_disconnect: fn -> send(:test, :disconnect_called) end
+        )
 
       refute_receive :connect_called
       refute_receive :connect_called
@@ -91,13 +96,14 @@ defmodule ConnGRPC.ChannelTest do
     test "attempts to reconnect when receiving :gun_down tuple" do
       GRPC.Client.TestAdapters.Stateful.start_link(:up)
 
-      {:ok, channel_pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Stateful],
-        on_connect: fn -> send(:test, :connect_called) end,
-        on_disconnect: fn -> send(:test, :disconnect_called) end,
-        backoff_module: ConnGRPC.Backoff.Immediate
-      )
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Stateful],
+          on_connect: fn -> send(:test, :connect_called) end,
+          on_disconnect: fn -> send(:test, :disconnect_called) end,
+          backoff_module: ConnGRPC.Backoff.Immediate
+        )
 
       assert_receive :connect_called
 
@@ -116,13 +122,14 @@ defmodule ConnGRPC.ChannelTest do
     test "attempts to reconnect when receiving :connection_down message" do
       GRPC.Client.TestAdapters.Stateful.start_link(:up)
 
-      {:ok, channel_pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Stateful],
-        on_connect: fn -> send(:test, :connect_called) end,
-        on_disconnect: fn -> send(:test, :disconnect_called) end,
-        backoff_module: ConnGRPC.Backoff.Immediate
-      )
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Stateful],
+          on_connect: fn -> send(:test, :connect_called) end,
+          on_disconnect: fn -> send(:test, :disconnect_called) end,
+          backoff_module: ConnGRPC.Backoff.Immediate
+        )
 
       assert_receive :connect_called
 
@@ -220,19 +227,21 @@ defmodule ConnGRPC.ChannelTest do
 
   describe "get/1" do
     test "returns {:ok, channel} when it is able to connect" do
-      {:ok, channel_pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Success]
-      )
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success]
+        )
 
       assert {:ok, %GRPC.Channel{}} = Channel.get(channel_pid)
     end
 
     test "returns {:error, :not_connected} when it is not able to connect" do
-      {:ok, channel_pid} = Channel.start_link(
-        address: "address",
-        opts: [adapter: GRPC.Client.TestAdapters.Error]
-      )
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Error]
+        )
 
       assert {:error, :not_connected} = Channel.get(channel_pid)
     end
@@ -241,7 +250,9 @@ defmodule ConnGRPC.ChannelTest do
   describe "__using__" do
     test "allows defining channel as a module" do
       defmodule UsingTestChannel do
-        use ConnGRPC.Channel, address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]
+        use ConnGRPC.Channel,
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success]
       end
 
       Supervisor.start_link([UsingTestChannel], strategy: :one_for_one)

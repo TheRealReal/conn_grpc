@@ -10,19 +10,21 @@ defmodule ConnGRPC.PoolTest do
 
   describe "start_link/1" do
     test "starts the process successfully", %{pool_name: pool_name} do
-      assert {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 5,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
-      )
+      assert {:ok, _} =
+               Pool.start_link(
+                 name: pool_name,
+                 pool_size: 5,
+                 channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+               )
     end
 
     test "names the process when `name` option is passed" do
-      assert {:ok, pid} = Pool.start_link(
-        name: :test_pool,
-        pool_size: 5,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
-      )
+      assert {:ok, pid} =
+               Pool.start_link(
+                 name: :test_pool,
+                 pool_size: 5,
+                 channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+               )
 
       assert Process.whereis(:test_pool) == pid
     end
@@ -30,11 +32,12 @@ defmodule ConnGRPC.PoolTest do
 
   describe "get_channel/1" do
     test "returns {:ok, channel} using round-robin", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 3,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
-      )
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+        )
 
       :timer.sleep(100)
 
@@ -49,12 +52,15 @@ defmodule ConnGRPC.PoolTest do
       refute channel2 == channel3
     end
 
-    test "returns {:error, :not_connected} when there is no connected channel", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 3,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]]
-      )
+    test "returns {:error, :not_connected} when there is no connected channel", %{
+      pool_name: pool_name
+    } do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]]
+        )
 
       :timer.sleep(100)
 
@@ -62,12 +68,13 @@ defmodule ConnGRPC.PoolTest do
     end
 
     test "does not return disconnected channel", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 3,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]],
-        backoff_module: ConnGRPC.Backoff.NoRetry
-      )
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]],
+          backoff_module: ConnGRPC.Backoff.NoRetry
+        )
 
       :timer.sleep(100)
 
@@ -87,15 +94,16 @@ defmodule ConnGRPC.PoolTest do
     end
 
     test "returns reconnected channel", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 3,
-        channel: [
-          address: "address",
-          opts: [adapter: GRPC.Client.TestAdapters.Success],
-          backoff_module: ConnGRPC.Backoff.Immediate
-        ]
-      )
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [
+            address: "address",
+            opts: [adapter: GRPC.Client.TestAdapters.Success],
+            backoff_module: ConnGRPC.Backoff.Immediate
+          ]
+        )
 
       :timer.sleep(100)
 
@@ -117,11 +125,12 @@ defmodule ConnGRPC.PoolTest do
 
   describe "get_all_pids/1" do
     test "returns list of pids", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 5,
-        channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
-      )
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 5,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+        )
 
       :timer.sleep(100)
 
@@ -131,15 +140,16 @@ defmodule ConnGRPC.PoolTest do
     end
 
     test "does not return pid of disconnected channel", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 5,
-        channel: [
-          address: "address",
-          opts: [adapter: GRPC.Client.TestAdapters.Success],
-          backoff_module: ConnGRPC.Backoff.NoRetry
-        ]
-      )
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 5,
+          channel: [
+            address: "address",
+            opts: [adapter: GRPC.Client.TestAdapters.Success],
+            backoff_module: ConnGRPC.Backoff.NoRetry
+          ]
+        )
 
       :timer.sleep(100)
 
@@ -158,15 +168,16 @@ defmodule ConnGRPC.PoolTest do
     end
 
     test "returns pid of reconnected channel", %{pool_name: pool_name} do
-      {:ok, _} = Pool.start_link(
-        name: pool_name,
-        pool_size: 5,
-        channel: [
-          address: "address",
-          opts: [adapter: GRPC.Client.TestAdapters.Success],
-          backoff_module: ConnGRPC.Backoff.Immediate
-        ]
-      )
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 5,
+          channel: [
+            address: "address",
+            opts: [adapter: GRPC.Client.TestAdapters.Success],
+            backoff_module: ConnGRPC.Backoff.Immediate
+          ]
+        )
 
       :timer.sleep(100)
 
@@ -187,10 +198,12 @@ defmodule ConnGRPC.PoolTest do
   describe "__using__" do
     test "allows defining pool as a module" do
       defmodule UsingTestPool do
-        use ConnGRPC.Pool, pool_size: 3, channel: [
-          address: "address",
-          opts: [adapter: GRPC.Client.TestAdapters.Success]
-        ]
+        use ConnGRPC.Pool,
+          pool_size: 3,
+          channel: [
+            address: "address",
+            opts: [adapter: GRPC.Client.TestAdapters.Success]
+          ]
       end
 
       Supervisor.start_link([UsingTestPool], strategy: :one_for_one)
