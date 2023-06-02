@@ -159,8 +159,6 @@ defmodule ConnGRPC.Channel do
     {:noreply, handle_disconnect(state)}
   end
 
-  def handle_info({:gun_up, _, _}, state), do: {:noreply, state}
-
   # END - Gun callbacks
 
   # START - Mint callbacks
@@ -170,10 +168,16 @@ defmodule ConnGRPC.Channel do
 
   # This is also called with the Mint adapter when connection goes down
   def handle_info({:elixir_grpc, :connection_down, _pid}, state) do
+    IO.puts("mint")
     {:noreply, handle_disconnect(state)}
   end
 
   # END - Mint callbacks
+
+  def handle_info(msg, state) do
+    debug("Unexpected message: #{inspect(msg)}")
+    {:noreply, state}
+  end
 
   @impl true
   def handle_call(:get, _from, state) do
