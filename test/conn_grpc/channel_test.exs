@@ -31,7 +31,7 @@ defmodule ConnGRPC.ChannelTest do
     test "calls grpc_stub.connect/2 with address and options" do
       defmodule CallArgsTest do
         def connect(address, opts) do
-          send(:test, {:called, address, opts})
+          send(:test, {CallArgsTest, :called_connect, address, opts})
           {:ok, %GRPC.Channel{}}
         end
       end
@@ -42,7 +42,7 @@ defmodule ConnGRPC.ChannelTest do
         opts: [headers: [foo: "bar"]]
       )
 
-      assert_receive {:called, "address", [headers: [foo: "bar"]]}
+      assert_receive {CallArgsTest, :called_connect, "address", [headers: [foo: "bar"]]}
     end
 
     test "calls on_connect when connection succeeds" do
@@ -67,6 +67,23 @@ defmodule ConnGRPC.ChannelTest do
 
       refute_receive :connect_called
       refute_receive :connect_called
+    end
+
+    test "does not call grpc_stub.connect/2 when receiving :connect from outside with a channel already open" do
+      defmodule DuplicateConnectTest do
+        def connect(address, opts) do
+          send(:test, {DuplicateConnectTest, :called_connect, address, opts})
+          {:ok, %GRPC.Channel{}}
+        end
+      end
+
+      {:ok, channel_pid} = Channel.start_link(grpc_stub: DuplicateConnectTest, address: "address")
+
+      assert_receive {DuplicateConnectTest, :called_connect, _, _}
+
+      send(channel_pid, :connect)
+
+      refute_receive {DuplicateConnectTest, :called_connect, _, _}
     end
   end
 
