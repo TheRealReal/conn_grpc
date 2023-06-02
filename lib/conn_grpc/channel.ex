@@ -168,7 +168,6 @@ defmodule ConnGRPC.Channel do
 
   # This is also called with the Mint adapter when connection goes down
   def handle_info({:elixir_grpc, :connection_down, _pid}, state) do
-    IO.puts("mint")
     {:noreply, handle_disconnect(state)}
   end
 
