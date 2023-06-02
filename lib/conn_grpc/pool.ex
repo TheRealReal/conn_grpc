@@ -16,7 +16,9 @@ defmodule ConnGRPC.Pool do
   To implement a module-based gRPC pool, define a module that uses `ConnGRPC.Pool`.
 
       defmodule DemoPool do
-        use ConnGRPC.Pool, pool_size: 5, channel: [address: "localhost:50051", opts: []]
+        use ConnGRPC.Pool,
+          pool_size: 5,
+          channel: [address: "localhost:50051", opts: []]
       end
 
   The format of `address` and `opts` is the same used by
