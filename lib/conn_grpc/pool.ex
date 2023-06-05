@@ -161,7 +161,7 @@ defmodule ConnGRPC.Pool do
 
     children = [
       {Registry, name: registry_name, keys: :duplicate},
-      build_channels_supervisor_spec(pool_size, channel_opts, registry_name),
+      build_channels_supervisor_spec(pool_name, pool_size, channel_opts, registry_name),
       Supervisor.child_spec(
         {Task, fn -> telemetry_status_loop(pool_name, pool_size, telemetry_interval) end},
         id: :telemetry_status_loop,
@@ -172,11 +172,12 @@ defmodule ConnGRPC.Pool do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  defp build_channels_supervisor_spec(pool_size, channel_opts, registry_name) do
+  defp build_channels_supervisor_spec(pool_name, pool_size, channel_opts, registry_name) do
     channel_opts =
       channel_opts
       |> Keyword.put(:on_connect, fn -> Registry.register(registry_name, :channels, nil) end)
       |> Keyword.put(:on_disconnect, fn -> Registry.unregister(registry_name, :channels) end)
+      |> Keyword.put(:pool_name, pool_name)
 
     channels_specs =
       for index <- 1..pool_size do
