@@ -109,14 +109,15 @@ defmodule ConnGRPC.Channel do
 
   @doc "Returns the gRPC channel"
   @spec get(atom | pid) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
-  def get(channel) do
+  def get(channel, pool_name \\ nil) do
     start = System.monotonic_time()
+
     result = GenServer.call(channel, :get)
 
     :telemetry.execute(
       [:conn_grpc, :channel, :get],
       %{duration: System.monotonic_time() - start},
-      %{channel: channel}
+      %{channel: channel, pool_name: pool_name}
     )
 
     result
