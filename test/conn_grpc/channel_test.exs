@@ -8,6 +8,15 @@ defmodule ConnGRPC.ChannelTest do
     :ok
   end
 
+  setup_all do
+    TelemetryHelper.setup_telemetry(__MODULE__, [
+      [:conn_grpc, :channel, :get],
+      [:conn_grpc, :channel, :connected],
+      [:conn_grpc, :channel, :connection_failed],
+      [:conn_grpc, :channel, :disconnected]
+    ])
+  end
+
   describe "start_link/1" do
     test "starts the process successfully" do
       assert {:ok, _pid} =
@@ -61,6 +70,22 @@ defmodule ConnGRPC.ChannelTest do
       refute_receive :connect_called
     end
 
+    test "executes telemetry when connection succeeds" do
+      {:ok, _pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          name: :test_channel
+        )
+
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :channel, :connected],
+        _measurements = %{duration: _},
+        _metadata = %{channel_name: :test_channel}
+      }
+    end
+
     test "does not call connection callbacks when connection does not succeed" do
       {:ok, _pid} =
         Channel.start_link(
@@ -71,7 +96,23 @@ defmodule ConnGRPC.ChannelTest do
         )
 
       refute_receive :connect_called
-      refute_receive :connect_called
+      refute_receive :disconnect_called
+    end
+
+    test "executes telemetry when connection fails" do
+      {:ok, _pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Error],
+          name: :test_channel
+        )
+
+        assert_receive {
+          :telemetry_executed,
+          _event = [:conn_grpc, :channel, :connection_failed],
+          _measurements = %{duration: _, error: _},
+          _metadata = %{channel_name: :test_channel}
+        }
     end
 
     test "does not call grpc_stub.connect/2 when receiving :connect from outside with a channel already open" do
@@ -116,6 +157,25 @@ defmodule ConnGRPC.ChannelTest do
       GRPC.Client.TestAdapters.Stateful.up()
       assert_receive :connect_called
     end
+
+    test "executes telemetry" do
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoRetry,
+          name: :test_channel
+        )
+
+      send(channel_pid, {:gun_down, fake_pid(), :http2, :normal, []})
+
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :channel, :disconnected],
+        _measurements = %{duration: _},
+        _metadata = %{channel_name: :test_channel}
+      }
+    end
   end
 
   describe "Mint disconnect handling" do
@@ -142,6 +202,26 @@ defmodule ConnGRPC.ChannelTest do
 
       GRPC.Client.TestAdapters.Stateful.up()
       assert_receive :connect_called
+    end
+
+    test "executes telemetry" do
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoRetry,
+          name: :test_channel
+        )
+
+      send(channel_pid, {:EXIT, fake_pid(), %Mint.TransportError{reason: :econnrefused}})
+      send(channel_pid, {:elixir_grpc, :connection_down, fake_pid()})
+
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :channel, :disconnected],
+        _measurements = %{duration: _},
+        _metadata = %{channel_name: :test_channel}
+      }
     end
   end
 
