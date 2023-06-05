@@ -79,7 +79,7 @@ defmodule ConnGRPC.Pool do
 
   alias ConnGRPC.Channel
 
-  @telemetry_interval :timer.seconds(3)
+  @telemetry_interval :timer.seconds(5)
 
   defmacro __using__(use_opts \\ []) do
     quote do
