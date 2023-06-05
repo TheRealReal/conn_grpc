@@ -117,7 +117,7 @@ defmodule ConnGRPC.Channel do
     :telemetry.execute(
       [:conn_grpc, :channel, :get],
       %{duration: System.monotonic_time() - start},
-      %{channel: channel, pool_name: opts[:pool_name]}
+      Map.merge(%{channel: channel}, opts[:telemetry] || %{})
     )
 
     result
