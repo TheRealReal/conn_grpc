@@ -4,8 +4,16 @@ defmodule ConnGRPC.PoolTest do
   alias ConnGRPC.Pool
 
   setup do
-    pool_name = :"test_pool_#{inspect(self())}"
-    {:ok, pool_name: pool_name}
+    Process.register(self(), :pool_test)
+
+    {:ok, pool_name: :"test_pool_#{inspect(self())}"}
+  end
+
+  setup_all do
+    TelemetryHelper.setup_telemetry(:pool_test, [
+      [:conn_grpc, :pool, :status],
+      [:conn_grpc, :pool, :get_channel]
+    ])
   end
 
   describe "start_link/1" do
@@ -121,6 +129,46 @@ defmodule ConnGRPC.PoolTest do
       refute channel1 == channel2
       refute channel2 == channel3
     end
+
+    test "executes telemetry on success", %{pool_name: pool_name} do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+        )
+
+      :timer.sleep(100)
+
+      {:ok, _} = Pool.get_channel(pool_name)
+
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :pool, :get_channel],
+        _measurements = %{duration: _},
+        _metadata = %{pool_name: ^pool_name}
+      }
+    end
+
+    test "executes telemetry on error", %{pool_name: pool_name} do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]]
+        )
+
+      :timer.sleep(100)
+
+      {:error, _} = Pool.get_channel(pool_name)
+
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :pool, :get_channel],
+        _measurements = %{duration: _},
+        _metadata = %{pool_name: ^pool_name}
+      }
+    end
   end
 
   describe "get_all_pids/1" do
@@ -192,6 +240,46 @@ defmodule ConnGRPC.PoolTest do
       result = Pool.get_all_pids(pool_name)
       assert length(result) == 5
       assert Enum.all?(result, &is_pid/1)
+    end
+  end
+
+  describe "[:conn_grpc, :pool, :status] telemetry event" do
+    test "is sent periodically", %{pool_name: pool_name} do
+      assert {:ok, _} =
+               Pool.start_link(
+                 name: pool_name,
+                 pool_size: 5,
+                 channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]],
+                 telemetry_interval: 25
+               )
+
+      for _ <- 1..2 do
+        assert_receive {
+          :telemetry_executed,
+          _event = [:conn_grpc, :pool, :status],
+          _measurements = %{expected_size: 5, current_size: 5},
+          _metadata = %{pool_name: ^pool_name}
+        }
+      end
+    end
+
+    test "reports current size correctly", %{pool_name: pool_name} do
+      assert {:ok, _} =
+               Pool.start_link(
+                 name: pool_name,
+                 pool_size: 5,
+                 channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]],
+                 telemetry_interval: 25
+               )
+
+      for _ <- 1..2 do
+        assert_receive {
+          :telemetry_executed,
+          _event = [:conn_grpc, :pool, :status],
+          _measurements = %{expected_size: 5, current_size: 0},
+          _metadata = %{pool_name: ^pool_name}
+        }
+      end
     end
   end
 
