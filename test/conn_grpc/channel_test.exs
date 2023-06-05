@@ -107,12 +107,12 @@ defmodule ConnGRPC.ChannelTest do
           name: :test_channel
         )
 
-        assert_receive {
-          :telemetry_executed,
-          _event = [:conn_grpc, :channel, :connection_failed],
-          _measurements = %{duration: _, error: _},
-          _metadata = %{channel_name: :test_channel}
-        }
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :channel, :connection_failed],
+        _measurements = %{duration: _, error: _},
+        _metadata = %{channel_name: :test_channel}
+      }
     end
 
     test "does not call grpc_stub.connect/2 when receiving :connect from outside with a channel already open" do
@@ -324,14 +324,14 @@ defmodule ConnGRPC.ChannelTest do
           name: :test_channel
         )
 
-        {:ok, _} = Channel.get(:test_channel)
+      {:ok, _} = Channel.get(:test_channel)
 
-        assert_receive {
-          :telemetry_executed,
-          _event = [:conn_grpc, :channel, :get],
-          _measurements = %{duration: _},
-          _metadata = %{channel: :test_channel}
-        }
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :channel, :get],
+        _measurements = %{duration: _},
+        _metadata = %{channel: :test_channel}
+      }
     end
 
     test "returns {:error, :not_connected} when connection is down" do
