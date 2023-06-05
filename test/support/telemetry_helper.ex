@@ -6,12 +6,13 @@ defmodule TelemetryHelper do
   @moduledoc false
 
   def setup_telemetry(process_name, events) do
-    :ok = :telemetry.attach_many(
-      "handler_#{process_name}",
-      events,
-      &TelemetryHelper.handle/4,
-      %{process_name: process_name}
-    )
+    :ok =
+      :telemetry.attach_many(
+        "handler_#{process_name}",
+        events,
+        &TelemetryHelper.handle/4,
+        %{process_name: process_name}
+      )
   end
 
   def handle(event_name, measurements, metadata, %{process_name: process_name}) do
