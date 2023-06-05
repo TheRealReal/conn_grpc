@@ -154,7 +154,7 @@ defmodule ConnGRPC.Pool do
 
     {pid, _} = Enum.at(channels, index)
 
-    Channel.get(pid)
+    Channel.get(pid, pool_name)
   end
 
   @doc "Returns all pids on the pool"
