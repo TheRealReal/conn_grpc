@@ -110,7 +110,16 @@ defmodule ConnGRPC.Channel do
   @doc "Returns the gRPC channel"
   @spec get(atom | pid) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
   def get(channel) do
-    GenServer.call(channel, :get)
+    start = System.monotonic_time()
+    result = GenServer.call(channel, :get)
+
+    :telemetry.execute(
+      [:conn_grpc, :channel, :get],
+      %{duration: System.monotonic_time() - start},
+      %{channel: channel}
+    )
+
+    result
   end
 
   # Server
@@ -199,14 +208,26 @@ defmodule ConnGRPC.Channel do
     case grpc_stub.connect(address, opts) do
       {:ok, channel} ->
         now = System.monotonic_time()
-        :telemetry.execute([:conn_grpc, :channel, :connected], %{duration: now - start}, telemetry_metadata(state))
+
+        :telemetry.execute(
+          [:conn_grpc, :channel, :connected],
+          %{duration: now - start},
+          telemetry_metadata(state)
+        )
+
         debug(state, "Connected")
         state.on_connect.()
         {:noreply, %{state | channel: channel, connection_start: now} |> reset_backoff()}
 
       {:error, error} ->
         now = System.monotonic_time()
-        :telemetry.execute([:conn_grpc, :channel, :connection_failed], %{duration: now - start, error: error}, telemetry_metadata(state))
+
+        :telemetry.execute(
+          [:conn_grpc, :channel, :connection_failed],
+          %{duration: now - start, error: error},
+          telemetry_metadata(state)
+        )
+
         debug(state, "Connection failed: #{inspect(error)}")
         {:noreply, schedule_retry(state)}
     end
@@ -219,7 +240,13 @@ defmodule ConnGRPC.Channel do
     debug(state, "Connection down")
     state.on_disconnect.()
     state.channel.adapter.disconnect(state.channel)
-    :telemetry.execute([:conn_grpc, :channel, :disconnected], %{duration: now - state.connection_start}, telemetry_metadata(state))
+
+    :telemetry.execute(
+      [:conn_grpc, :channel, :disconnected],
+      %{duration: now - state.connection_start},
+      telemetry_metadata(state)
+    )
+
     state = %{state | channel: nil}
     schedule_retry(state)
   end
