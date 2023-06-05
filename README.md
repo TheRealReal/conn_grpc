@@ -26,13 +26,13 @@ defmodule DemoPool do
 end
 ```
 
-Then add `DemoPool` to your supervision tree, and anywhere from your application, call:
+Then add `DemoPool` to your supervision tree, and call anywhere in your application to get a channel connection:
 
 ```elixir
 {:ok, channel} = DemoPool.get_channel()
 ```
 
-Each time `get_channel/0` is called, a different channel from your pool will be returned using round-robin.
+Each time `get_channel` is called, a different channel from your pool will be returned using round-robin.
 
 For more info, see [`ConnGRPC.Pool` on Hexdocs](https://hexdocs.pm/conn_grpc/ConnGRPC.Pool.html).
 
@@ -46,7 +46,7 @@ defmodule DemoChannel do
 end
 ```
 
-Then add `DemoChannel` to your supervision tree, and anywhere from your application, call `get/0` to get the channel connection:
+Then add `DemoChannel` to your supervision tree, and call anywhere in your application to get your channel connection:
 
 ```elixir
 {:ok, channel} = DemoChannel.get()
