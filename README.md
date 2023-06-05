@@ -14,13 +14,49 @@ end
 
 ## How to use
 
-For pool implementation, see [`ConnGRPC.Pool`](https://hexdocs.pm/conn_grpc/0.1.0/ConnGRPC.Pool.html)
+### Channel pools
 
-For single persistent channel implementation, see [`ConnGRPC.Channel`](https://hexdocs.pm/conn_grpc/0.1.0/ConnGRPC.Channel.html)
+Define a module that uses [`ConnGRPC.Pool`](https://hexdocs.pm/conn_grpc/ConnGRPC.Pool.html):
+
+```elixir
+defmodule DemoPool do
+  use ConnGRPC.Pool,
+    pool_size: 5,
+    channel: [address: "localhost:50051", opts: []]
+end
+```
+
+Then add `DemoPool` to your supervision tree, and anywhere from your application, call:
+
+```elixir
+{:ok, channel} = DemoPool.get_channel()
+```
+
+Each time `get_channel/0` is called, a different channel from your pool will be returned using round-robin.
+
+For more info, see [`ConnGRPC.Pool` on Hexdocs](https://hexdocs.pm/conn_grpc/ConnGRPC.Pool.html).
+
+### Single channel
+
+For a single persistent channel, define a module that uses [`ConnGRPC.Channel`](https://hexdocs.pm/conn_grpc/ConnGRPC.Channel.html).
+
+```elixir
+defmodule DemoChannel do
+  use ConnGRPC.Channel, address: "localhost:50051", opts: []
+end
+```
+
+Then add `DemoChannel` to your supervision tree, and anywhere from your application, call `get/0` to get the channel connection:
+
+```elixir
+{:ok, channel} = DemoChannel.get()
+```
+
+For more info, see [`ConnGRPC.Channel` on Hexdocs](https://hexdocs.pm/conn_grpc/ConnGRPC.Channel.html).
 
 ## Code of Conduct
 
-This project  Contributor Covenant version 2.1. Check [CODE_OF_CONDUCT.md](/CODE_OF_CONDUCT.md) file for more information.
+This project uses Contributor Covenant version 2.1. Check [CODE_OF_CONDUCT.md](/CODE_OF_CONDUCT.md) file for more information.
 
 ## License
 
