@@ -4,12 +4,12 @@ defmodule ConnGRPC.ChannelTest do
   alias ConnGRPC.Channel
 
   setup do
-    Process.register(self(), :test)
+    Process.register(self(), :channel_test)
     :ok
   end
 
   setup_all do
-    TelemetryHelper.setup_telemetry(__MODULE__, [
+    TelemetryHelper.setup_telemetry(:channel_test, [
       [:conn_grpc, :channel, :get],
       [:conn_grpc, :channel, :connected],
       [:conn_grpc, :channel, :connection_failed],
@@ -42,7 +42,7 @@ defmodule ConnGRPC.ChannelTest do
     test "calls grpc_stub.connect/2 with address and options" do
       defmodule CallArgsTest do
         def connect(address, opts) do
-          send(:test, {CallArgsTest, :called_connect, address, opts})
+          send(:channel_test, {CallArgsTest, :called_connect, address, opts})
           {:ok, %GRPC.Channel{}}
         end
       end
@@ -62,8 +62,8 @@ defmodule ConnGRPC.ChannelTest do
         Channel.start_link(
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Success],
-          on_connect: fn -> send(:test, :connect_called) end,
-          on_disconnect: fn -> send(:test, :disconnect_called) end
+          on_connect: fn -> send(:channel_test, :connect_called) end,
+          on_disconnect: fn -> send(:channel_test, :disconnect_called) end
         )
 
       assert_receive :connect_called
@@ -91,8 +91,8 @@ defmodule ConnGRPC.ChannelTest do
         Channel.start_link(
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Error],
-          on_connect: fn -> send(:test, :connect_called) end,
-          on_disconnect: fn -> send(:test, :disconnect_called) end
+          on_connect: fn -> send(:channel_test, :connect_called) end,
+          on_disconnect: fn -> send(:channel_test, :disconnect_called) end
         )
 
       refute_receive :connect_called
@@ -118,7 +118,7 @@ defmodule ConnGRPC.ChannelTest do
     test "does not call grpc_stub.connect/2 when receiving :connect from outside with a channel already open" do
       defmodule DuplicateConnectTest do
         def connect(address, opts) do
-          send(:test, {DuplicateConnectTest, :called_connect, address, opts})
+          send(:channel_test, {DuplicateConnectTest, :called_connect, address, opts})
           {:ok, %GRPC.Channel{}}
         end
       end
@@ -141,8 +141,8 @@ defmodule ConnGRPC.ChannelTest do
         Channel.start_link(
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Stateful],
-          on_connect: fn -> send(:test, :connect_called) end,
-          on_disconnect: fn -> send(:test, :disconnect_called) end,
+          on_connect: fn -> send(:channel_test, :connect_called) end,
+          on_disconnect: fn -> send(:channel_test, :disconnect_called) end,
           backoff_module: ConnGRPC.Backoff.Immediate
         )
 
@@ -186,8 +186,8 @@ defmodule ConnGRPC.ChannelTest do
         Channel.start_link(
           address: "address",
           opts: [adapter: GRPC.Client.TestAdapters.Stateful],
-          on_connect: fn -> send(:test, :connect_called) end,
-          on_disconnect: fn -> send(:test, :disconnect_called) end,
+          on_connect: fn -> send(:channel_test, :connect_called) end,
+          on_disconnect: fn -> send(:channel_test, :disconnect_called) end,
           backoff_module: ConnGRPC.Backoff.Immediate
         )
 
@@ -231,19 +231,19 @@ defmodule ConnGRPC.ChannelTest do
 
       @impl true
       def new(arg) do
-        send(:test, {FakeBackoff, :new_called, arg})
+        send(:channel_test, {FakeBackoff, :new_called, arg})
         {:backoff_state, 1}
       end
 
       @impl true
       def backoff({:backoff_state, n} = arg) do
-        send(:test, {FakeBackoff, :backoff_called, arg})
+        send(:channel_test, {FakeBackoff, :backoff_called, arg})
         {n, {:backoff_state, n + 1}}
       end
 
       @impl true
       def reset({:backoff_state, _} = arg) do
-        send(:test, {FakeBackoff, :reset_called, arg})
+        send(:channel_test, {FakeBackoff, :reset_called, arg})
         {:backoff_state, 1}
       end
     end
@@ -306,7 +306,7 @@ defmodule ConnGRPC.ChannelTest do
   end
 
   describe "get/1" do
-    test "returns {:ok, channel} when it is able to connect" do
+    test "returns {:ok, channel} when connection is up" do
       {:ok, channel_pid} =
         Channel.start_link(
           address: "address",
@@ -316,7 +316,25 @@ defmodule ConnGRPC.ChannelTest do
       assert {:ok, %GRPC.Channel{}} = Channel.get(channel_pid)
     end
 
-    test "returns {:error, :not_connected} when it is not able to connect" do
+    test "executes telemetry when connection is up" do
+      {:ok, _} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          name: :test_channel
+        )
+
+        {:ok, _} = Channel.get(:test_channel)
+
+        assert_receive {
+          :telemetry_executed,
+          _event = [:conn_grpc, :channel, :get],
+          _measurements = %{duration: _},
+          _metadata = %{channel: :test_channel}
+        }
+    end
+
+    test "returns {:error, :not_connected} when connection is down" do
       {:ok, channel_pid} =
         Channel.start_link(
           address: "address",
@@ -324,6 +342,24 @@ defmodule ConnGRPC.ChannelTest do
         )
 
       assert {:error, :not_connected} = Channel.get(channel_pid)
+    end
+
+    test "executes telemetry when connection is down" do
+      {:ok, _} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Error],
+          name: :test_channel
+        )
+
+      {:error, _} = Channel.get(:test_channel)
+
+      assert_receive {
+        :telemetry_executed,
+        _event = [:conn_grpc, :channel, :get],
+        _measurements = %{duration: _},
+        _metadata = %{channel: :test_channel}
+      }
     end
   end
 
