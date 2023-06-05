@@ -30,6 +30,7 @@ defmodule ConnGRPC.MixProject do
   defp deps do
     [
       {:backoff, "~> 1.1"},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
       {:grpc, "~> 0.0", only: :test},
       {:mint, "~> 1.4.2", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
