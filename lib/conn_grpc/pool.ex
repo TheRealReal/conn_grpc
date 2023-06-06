@@ -177,7 +177,7 @@ defmodule ConnGRPC.Pool do
       |> Keyword.put(:on_disconnect, fn -> Registry.unregister(registry_name, :channels) end)
 
     channels_specs =
-      for index <- 1..pool_size do
+      for index <- 1..pool_size//1 do
         Supervisor.child_spec({ConnGRPC.Channel, channel_opts}, id: {ConnGRPC.Channel, index})
       end
 
