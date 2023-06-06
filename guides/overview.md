@@ -51,7 +51,7 @@ defmodule DemoChannel do
 end
 ```
 
-Then add `DemoChannel` to your supervision tree, and call `get/0` anywhere in your application to get your channel connection:
+Then add `DemoChannel` to your supervision tree, and call `get/0` from anywhere in your application to get your channel connection:
 
 ```elixir
 {:ok, channel} = DemoChannel.get()
