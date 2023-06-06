@@ -49,13 +49,14 @@ defmodule ConnGRPC.MixProject do
       source_ref: "v#{@version}",
       canonical: "http://hexdocs.pm/conn_grpc",
       source_url: @source_url,
-      main: "readme",
+      main: "overview",
       extras: [
-        "README.md",
-        "CHANGELOG.md": [filename: "changelog", title: "Changelog"],
-        "CODE_OF_CONDUCT.md": [filename: "code_of_conduct", title: "Code of Conduct"],
-        LICENSE: [filename: "license", title: "License"],
-        NOTICE: [filename: "notice", title: "Notice"]
+        "guides/overview.md": [filename: "overview", title: "Overview"],
+        "CHANGELOG.md": [filename: "changelog", title: "Changelog"]
+      ],
+      groups_for_modules: [
+        Connection: [ConnGRPC.Channel, ConnGRPC.Pool],
+        Backoff: [ConnGRPC.Backoff, ConnGRPC.Backoff.Exponential]
       ]
     ]
   end
