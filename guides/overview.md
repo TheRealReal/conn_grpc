@@ -1,4 +1,4 @@
-ConnGRPC allows you to keep persistent channels, and use channel pools with [gRPC Elixir](https://github.com/elixir-grpc/grpc).
+ConnGRPC allows you to keep persistent channels, and use channel pools with [gRPC Elixir](https://hexdocs.pm/grpc/).
 
 ## Installation
 
