@@ -1,3 +1,6 @@
+![Tests](https://github.com/TheRealReal/conn_grpc/actions/workflows/ci.yml/badge.svg)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+
 # ConnGRPC
 
 Persistent channels, and channel pools for [gRPC Elixir](https://github.com/elixir-grpc/grpc).
