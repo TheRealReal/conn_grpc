@@ -102,6 +102,8 @@ defmodule ConnGRPC.Channel do
     * `:on_connect` - Function to run on connect (0-arity)
 
     * `:on_disconnect` - Function to run on disconnect (0-arity)
+
+    * `:grpc_stub` - GRPC stub module that will receive the `connect/2` call (default: `GRPC.Stub`)
   """
   def start_link(options) when is_list(options) do
     GenServer.start_link(__MODULE__, options, name: options[:name])
