@@ -54,7 +54,7 @@ defmodule ConnGRPC.MixProject do
       extras: [
         "guides/overview.md": [filename: "overview", title: "Overview"],
         "CHANGELOG.md": [filename: "changelog", title: "Changelog"],
-        "guides/telemetry.md": [filename: "telemetry", title: "Telemetry"],
+        "guides/telemetry.md": [filename: "telemetry", title: "Telemetry"]
       ],
       groups_for_modules: [
         Connection: [ConnGRPC.Channel, ConnGRPC.Pool],
