@@ -4,7 +4,7 @@ Call `:telemetry.attach/4` or `:telemetry.attach_many/4` to attach your handler 
 
 ## Channel events
 
-- `[:conn_grpc, :channel, :get]`: reports the duration of the call to `ConnGRPC.Channel.get/1`. If it's taking too much, the channel process is overwhelmed with messages, and increasing pool size may help.
+- `[:conn_grpc, :channel, :get]`: reports the duration of the call to `ConnGRPC.Channel.get/1`. If it's taking too long, the channel process is overwhelmed with messages, and increasing pool size may help.
 
 - `[:conn_grpc, :channel, :connected]`: reports a successful connection, and how long it took to establish the connection
 
