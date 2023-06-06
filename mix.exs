@@ -55,8 +55,8 @@ defmodule ConnGRPC.MixProject do
         "CHANGELOG.md": [filename: "changelog", title: "Changelog"]
       ],
       groups_for_modules: [
-        "Connection": [ConnGRPC.Channel, ConnGRPC.Pool],
-        "Backoff": [ConnGRPC.Backoff, ConnGRPC.Backoff.Exponential]
+        Connection: [ConnGRPC.Channel, ConnGRPC.Pool],
+        Backoff: [ConnGRPC.Backoff, ConnGRPC.Backoff.Exponential]
       ]
     ]
   end
