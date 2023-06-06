@@ -1,5 +1,9 @@
 defmodule ConnGRPC.Backoff.Exponential do
-  @moduledoc "Exponential backoff with jitter"
+  @moduledoc """
+  Exponential backoff with jitter.
+
+  This is the default retry backoff mechanism used by ConnGRPC.
+  """
 
   @behaviour ConnGRPC.Backoff
 

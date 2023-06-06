@@ -1,6 +1,4 @@
-# ConnGRPC
-
-Persistent channels, and channel pools for [gRPC Elixir](https://github.com/elixir-grpc/grpc).
+ConnGRPC allows you to keep persistent channels, and use channel pools with [gRPC Elixir](https://github.com/elixir-grpc/grpc).
 
 ## Installation
 
@@ -17,13 +15,13 @@ def deps do
 end
 ```
 
-## How to use
+## Usage
 
 You can use ConnGRPC with a pool of persistent channels, or with a single persistent channel.
 
 ### Channel pools
 
-Define a module that uses [`ConnGRPC.Pool`](https://hexdocs.pm/conn_grpc/ConnGRPC.Pool.html):
+Define a module that uses `ConnGRPC.Pool`.
 
 ```elixir
 defmodule DemoPool do
@@ -41,11 +39,11 @@ Then add `DemoPool` to your supervision tree, and call anywhere in your applicat
 
 Each time `get_channel` is called, a different channel from your pool will be returned using round-robin.
 
-For more info, see [`ConnGRPC.Pool` on Hexdocs](https://hexdocs.pm/conn_grpc/ConnGRPC.Pool.html).
+For more info, see `ConnGRPC.Pool`.
 
 ### Single channel
 
-For a single persistent channel, define a module that uses [`ConnGRPC.Channel`](https://hexdocs.pm/conn_grpc/ConnGRPC.Channel.html).
+For a single persistent channel, define a module that uses `ConnGRPC.Channel`.
 
 ```elixir
 defmodule DemoChannel do
@@ -61,14 +59,4 @@ Then add `DemoChannel` to your supervision tree, and call anywhere in your appli
 
 Depending on the load, using a single channel for the entire application may become a bottleneck. In that case, use the `ConnGRPC.Pool` module, that allows creating a pool of channels.
 
-For more info, see [`ConnGRPC.Channel` on Hexdocs](https://hexdocs.pm/conn_grpc/ConnGRPC.Channel.html).
-
-## Code of Conduct
-
-This project uses Contributor Covenant version 2.1. Check [CODE_OF_CONDUCT.md](/CODE_OF_CONDUCT.md) file for more information.
-
-## License
-
-ConnGRPC source code is released under Apache License 2.0.
-
-Check [NOTICE](/NOTICE) and [LICENSE](/LICENSE) files for more information.
+For more info, see `ConnGRPC.Channel`.

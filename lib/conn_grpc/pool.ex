@@ -73,6 +73,9 @@ defmodule ConnGRPC.Pool do
 
       ConnGRPC.Pool.get_channel(:demo_pool)
 
+  ## Options available
+
+  For all options available, see `start_link/1`.
   """
 
   use Supervisor
@@ -99,6 +102,19 @@ defmodule ConnGRPC.Pool do
     end
   end
 
+  @doc """
+  Starts and links supervisor that keeps a pool of gRPC channels.
+
+  ### Options
+
+    * `:name` - A name to register the started process (see the `:name` option
+      in `GenServer.start_link/3`)
+
+    * `:pool_size` - The size of the channel pool
+
+    * `:channel` - Channel configuration, such as address, connection options, backoff, and callbacks.
+    For all options, see `ConnGRPC.Channel.start_link/1`
+  """
   def start_link(opts) do
     Supervisor.start_link(__MODULE__, opts, name: opts[:name])
   end

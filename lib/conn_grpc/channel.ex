@@ -84,10 +84,10 @@ defmodule ConnGRPC.Channel do
   ### Options
 
     * `:address` - The gRPC server address. For more details,
-    see [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+    see `GRPC.Stub.connect/2`
 
     * `:opts` - Options for Elixir gRPC. For more details,
-    see [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
+    see `GRPC.Stub.connect/2`
 
     * `:name` - A name to register the started process (see the `:name` option
       in `GenServer.start_link/3`)

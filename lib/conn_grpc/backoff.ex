@@ -1,5 +1,5 @@
 defmodule ConnGRPC.Backoff do
-  @moduledoc "Behaviour for implementing custom backoff"
+  @moduledoc "Behaviour for implementing custom backoff."
 
   @doc "Initializes the backoff state. This is called when the channel process is started."
   @callback new(opts :: any) :: state :: any
