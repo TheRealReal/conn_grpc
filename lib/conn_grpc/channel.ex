@@ -67,6 +67,10 @@ defmodule ConnGRPC.Channel do
   ## Options available
 
   For all options available, see `start_link/1`.
+
+  ## Telemetry
+
+  ConnGRPC sends telemetry events. See [telemetry.md](guides/telemetry.md#channel-events).
   """
 
   use GenServer
