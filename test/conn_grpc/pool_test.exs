@@ -193,6 +193,22 @@ defmodule ConnGRPC.PoolTest do
       assert length(result) == 5
       assert Enum.all?(result, &is_pid/1)
     end
+
+    test "does not return any pid when pool_size is 0", %{pool_name: pool_name} do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 0,
+          channel: [
+            address: "address",
+            opts: [adapter: GRPC.Client.TestAdapters.Success]
+          ]
+        )
+
+      :timer.sleep(100)
+
+      assert Pool.get_all_pids(pool_name) == []
+    end
   end
 
   describe "__using__" do
