@@ -67,6 +67,10 @@ defmodule ConnGRPC.Channel do
   ## Options available
 
   For all options available, see `start_link/1`.
+
+  ## Telemetry
+
+  ConnGRPC sends telemetry events. See [telemetry.md](guides/telemetry.md#channel-events).
   """
 
   use GenServer
@@ -111,8 +115,18 @@ defmodule ConnGRPC.Channel do
 
   @doc "Returns the gRPC channel"
   @spec get(atom | pid) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
-  def get(channel) do
-    GenServer.call(channel, :get)
+  def get(channel, opts \\ []) do
+    start = System.monotonic_time()
+
+    result = GenServer.call(channel, :get)
+
+    :telemetry.execute(
+      [:conn_grpc, :channel, :get],
+      %{duration: System.monotonic_time() - start},
+      Map.merge(%{channel: channel}, opts[:telemetry] || %{})
+    )
+
+    result
   end
 
   # Server
@@ -125,6 +139,7 @@ defmodule ConnGRPC.Channel do
         opts: Keyword.get(options, :backoff, @backoff_opts)
       },
       channel: nil,
+      connection_start: nil,
       config: %{
         grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
         address: Keyword.fetch!(options, :address),
@@ -132,6 +147,7 @@ defmodule ConnGRPC.Channel do
       },
       debug: Keyword.get(options, :debug, false),
       name: Keyword.get(options, :name),
+      pool_name: Keyword.get(options, :pool_name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
       on_disconnect: Keyword.get(options, :on_disconnect, fn -> nil end),
       retry_timer_ref: nil
@@ -194,13 +210,31 @@ defmodule ConnGRPC.Channel do
   defp connect(%{channel: nil} = state) do
     %{grpc_stub: grpc_stub, address: address, opts: opts} = state.config
 
+    start = System.monotonic_time()
+
     case grpc_stub.connect(address, opts) do
       {:ok, channel} ->
+        now = System.monotonic_time()
+
+        :telemetry.execute(
+          [:conn_grpc, :channel, :connected],
+          %{duration: now - start},
+          telemetry_metadata(state)
+        )
+
         debug(state, "Connected")
         state.on_connect.()
-        {:noreply, %{state | channel: channel} |> reset_backoff()}
+        {:noreply, %{state | channel: channel, connection_start: now} |> reset_backoff()}
 
       {:error, error} ->
+        now = System.monotonic_time()
+
+        :telemetry.execute(
+          [:conn_grpc, :channel, :connection_failed],
+          %{duration: now - start, error: error},
+          telemetry_metadata(state)
+        )
+
         debug(state, "Connection failed: #{inspect(error)}")
         {:noreply, schedule_retry(state)}
     end
@@ -209,9 +243,17 @@ defmodule ConnGRPC.Channel do
   defp connect(state), do: {:noreply, state}
 
   defp handle_disconnect(state) do
+    now = System.monotonic_time()
     debug(state, "Connection down")
     state.on_disconnect.()
     state.channel.adapter.disconnect(state.channel)
+
+    :telemetry.execute(
+      [:conn_grpc, :channel, :disconnected],
+      %{duration: now - state.connection_start},
+      telemetry_metadata(state)
+    )
+
     state = %{state | channel: nil}
     schedule_retry(state)
   end
@@ -246,10 +288,17 @@ defmodule ConnGRPC.Channel do
 
   defp debug(%{debug: false}, _message), do: nil
 
-  defp debug(%{debug: true, name: name}, message) do
-    prefix = "[ConnGRPC.Channel:#{inspect(name || self())}] "
+  defp debug(%{debug: true, pool_name: pool_name}, message) when not is_nil(pool_name) do
+    prefix = "[ConnGRPC.Channel] [#{inspect(pool_name)}] [#{inspect(self())}] "
     Logger.debug(prefix <> message)
   end
+
+  defp debug(%{debug: true, name: name}, message) do
+    prefix = "[ConnGRPC.Channel] [#{inspect(name || self())}] "
+    Logger.debug(prefix <> message)
+  end
+
+  defp telemetry_metadata(state), do: %{channel_name: state.name, pool_name: state.pool_name}
 
   defmacro __using__(use_opts \\ []) do
     quote do

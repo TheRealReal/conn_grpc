@@ -31,6 +31,7 @@ defmodule ConnGRPC.MixProject do
     [
       {:backoff, "~> 1.1"},
       {:grpc, "~> 0.0", only: [:dev, :test]},
+      {:telemetry, "~> 0.4 or ~> 1.0"},
       {:mint, "~> 1.4.2", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
@@ -52,7 +53,8 @@ defmodule ConnGRPC.MixProject do
       main: "overview",
       extras: [
         "guides/overview.md": [filename: "overview", title: "Overview"],
-        "CHANGELOG.md": [filename: "changelog", title: "Changelog"]
+        "CHANGELOG.md": [filename: "changelog", title: "Changelog"],
+        "guides/telemetry.md": [filename: "telemetry", title: "Telemetry"]
       ],
       groups_for_modules: [
         Connection: [ConnGRPC.Channel, ConnGRPC.Pool],

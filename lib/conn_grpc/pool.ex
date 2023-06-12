@@ -76,11 +76,17 @@ defmodule ConnGRPC.Pool do
   ## Options available
 
   For all options available, see `start_link/1`.
+
+  ## Telemetry
+
+  ConnGRPC sends telemetry events. See [telemetry.md](guides/telemetry.md).
   """
 
   use Supervisor
 
   alias ConnGRPC.Channel
+
+  @telemetry_interval :timer.seconds(5)
 
   defmacro __using__(use_opts \\ []) do
     quote do
@@ -122,14 +128,24 @@ defmodule ConnGRPC.Pool do
   @doc "Returns a gRPC channel from the pool"
   @spec get_channel(module | atom) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
   def get_channel(pool_name) do
+    start = System.monotonic_time()
     channels = Registry.lookup(registry(pool_name), :channels)
     pool_size = length(channels)
 
-    if pool_size > 0 do
-      do_get_channel(pool_name, channels, pool_size)
-    else
-      {:error, :not_connected}
-    end
+    result =
+      if pool_size > 0 do
+        do_get_channel(pool_name, channels, pool_size)
+      else
+        {:error, :not_connected}
+      end
+
+    :telemetry.execute(
+      [:conn_grpc, :pool, :get_channel],
+      %{duration: System.monotonic_time() - start},
+      %{pool_name: pool_name}
+    )
+
+    result
   end
 
   defp do_get_channel(pool_name, channels, pool_size) do
@@ -142,7 +158,7 @@ defmodule ConnGRPC.Pool do
 
     {pid, _} = Enum.at(channels, index)
 
-    Channel.get(pid)
+    Channel.get(pid, telemetry: %{pool_name: pool_name})
   end
 
   @doc "Returns all pids on the pool"
@@ -158,23 +174,30 @@ defmodule ConnGRPC.Pool do
     pool_name = Keyword.fetch!(opts, :name)
     pool_size = Keyword.fetch!(opts, :pool_size)
     channel_opts = Keyword.fetch!(opts, :channel)
+    telemetry_interval = Keyword.get(opts, :telemetry_interval, @telemetry_interval)
     registry_name = registry(pool_name)
 
     build_ets_table(pool_name)
 
     children = [
       {Registry, name: registry_name, keys: :duplicate},
-      build_channels_supervisor_spec(pool_size, channel_opts, registry_name)
+      build_channels_supervisor_spec(pool_name, pool_size, channel_opts, registry_name),
+      Supervisor.child_spec(
+        {Task, fn -> telemetry_status_loop(pool_name, pool_size, telemetry_interval) end},
+        id: :telemetry_status_loop,
+        restart: :permanent
+      )
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  defp build_channels_supervisor_spec(pool_size, channel_opts, registry_name) do
+  defp build_channels_supervisor_spec(pool_name, pool_size, channel_opts, registry_name) do
     channel_opts =
       channel_opts
       |> Keyword.put(:on_connect, fn -> Registry.register(registry_name, :channels, nil) end)
       |> Keyword.put(:on_disconnect, fn -> Registry.unregister(registry_name, :channels) end)
+      |> Keyword.put(:pool_name, pool_name)
 
     channels_specs =
       for index <- 1..pool_size//1 do
@@ -193,6 +216,19 @@ defmodule ConnGRPC.Pool do
 
     :ets.new(ets_table, [:public, :named_table, :set])
     :ets.insert(ets_table, {:index, -1})
+  end
+
+  defp telemetry_status_loop(pool_name, pool_size, interval) do
+    current_size = Registry.lookup(registry(pool_name), :channels) |> length()
+
+    :telemetry.execute(
+      [:conn_grpc, :pool, :status],
+      %{expected_size: pool_size, current_size: current_size},
+      %{pool_name: pool_name}
+    )
+
+    :timer.sleep(interval)
+    telemetry_status_loop(pool_name, pool_size, interval)
   end
 
   defp ets_table(pool_name) do
