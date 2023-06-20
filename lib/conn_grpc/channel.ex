@@ -108,6 +108,9 @@ defmodule ConnGRPC.Channel do
     * `:on_disconnect` - Function to run on disconnect (0-arity)
 
     * `:grpc_stub` - GRPC stub module that will receive the `connect/2` call (default: `GRPC.Stub`)
+
+    * `:mock` - A function that if provided, will override calls to `get/1`.
+    It can be useful for mocking channel connection in parallel tests.
   """
   def start_link(options) when is_list(options) do
     GenServer.start_link(__MODULE__, options, name: options[:name])
@@ -146,6 +149,7 @@ defmodule ConnGRPC.Channel do
         opts: Keyword.get(options, :opts, [])
       },
       debug: Keyword.get(options, :debug, false),
+      mock: Keyword.get(options, :mock),
       name: Keyword.get(options, :name),
       pool_name: Keyword.get(options, :pool_name),
       on_connect: Keyword.get(options, :on_connect, fn -> nil end),
@@ -197,6 +201,10 @@ defmodule ConnGRPC.Channel do
   end
 
   @impl true
+  def handle_call(:get, {caller, _}, %{mock: mock} = state) when mock != nil do
+    {:reply, mock.(caller), state}
+  end
+
   def handle_call(:get, _from, state) do
     response =
       case state.channel do

@@ -361,6 +361,22 @@ defmodule ConnGRPC.ChannelTest do
         _metadata = %{channel: :test_channel}
       }
     end
+
+    test "uses mock when provided" do
+      parent = self()
+
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          mock: fn caller ->
+            assert caller == parent
+            {:ok, %GRPC.Channel{adapter: :mock}}
+          end
+        )
+
+      assert {:ok, %GRPC.Channel{adapter: :mock}} = Channel.get(channel_pid)
+    end
   end
 
   describe "__using__" do
