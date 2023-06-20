@@ -201,8 +201,8 @@ defmodule ConnGRPC.Channel do
   end
 
   @impl true
-  def handle_call(:get, _from, %{mock: mock} = state) when mock != nil do
-    {:reply, mock.(), state}
+  def handle_call(:get, {caller, _}, %{mock: mock} = state) when mock != nil do
+    {:reply, mock.(caller), state}
   end
 
   def handle_call(:get, _from, state) do
