@@ -75,6 +75,21 @@ defmodule ConnGRPC.PoolTest do
       assert {:error, :not_connected} = Pool.get_channel(pool_name)
     end
 
+    test "returns {:error, :not_connected} when address is nil", %{
+      pool_name: pool_name
+    } do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: nil, opts: [adapter: GRPC.Client.TestAdapters.Error]]
+        )
+
+      :timer.sleep(100)
+
+      assert {:error, :not_connected} = Pool.get_channel(pool_name)
+    end
+
     test "does not return disconnected channel", %{pool_name: pool_name} do
       {:ok, _} =
         Pool.start_link(

@@ -145,7 +145,7 @@ defmodule ConnGRPC.Channel do
       connection_start: nil,
       config: %{
         grpc_stub: Keyword.get(options, :grpc_stub, GRPC.Stub),
-        address: Keyword.fetch!(options, :address),
+        address: Keyword.fetch!(options, :address) || "",
         opts: Keyword.get(options, :opts, [])
       },
       debug: Keyword.get(options, :debug, false),
