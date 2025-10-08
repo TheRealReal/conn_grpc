@@ -334,6 +334,44 @@ defmodule ConnGRPC.PoolTest do
       assert {:ok, %GRPC.Channel{}} = UsingTestPool.get_channel()
       assert is_list(UsingTestPool.get_all_pids())
     end
+
+    test "loads configuration from Application.get_env when otp_app is specified" do
+      defmodule UsingTestPoolWithConfig do
+        use ConnGRPC.Pool, otp_app: :test_app
+      end
+
+      Application.put_env(:test_app, UsingTestPoolWithConfig,
+        pool_size: 2,
+        channel: [address: "test_address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+      )
+
+      child_spec = UsingTestPoolWithConfig.child_spec([])
+      {_module, _function, [opts]} = child_spec.start
+
+      assert opts[:pool_size] == 2
+      assert opts[:channel][:address] == "test_address"
+      assert opts[:name] == UsingTestPoolWithConfig
+
+      Application.delete_env(:test_app, UsingTestPoolWithConfig)
+    end
+
+    test "merges Application.get_env config with child_spec opts" do
+      defmodule UsingTestPoolWithMerge do
+        use ConnGRPC.Pool, otp_app: :test_app
+      end
+
+      Application.put_env(:test_app, UsingTestPoolWithMerge,
+        pool_size: 2,
+        channel: [address: "test_address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+      )
+
+      child_spec = UsingTestPoolWithMerge.child_spec(pool_size: 3)
+      {_module, _function, [opts]} = child_spec.start
+
+      assert Keyword.get(opts, :pool_size) == 3
+
+      Application.delete_env(:test_app, UsingTestPoolWithMerge)
+    end
   end
 
   defp send_disconnect_msg(pid), do: send(pid, {:gun_down, fake_pid(), :http2, :normal, []})
