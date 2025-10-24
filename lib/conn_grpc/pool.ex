@@ -21,6 +21,26 @@ defmodule ConnGRPC.Pool do
           channel: [address: "localhost:50051", opts: []]
       end
 
+  You can also use the `:otp_app` option to load configuration from your application's config:
+
+      defmodule DemoPool do
+        use ConnGRPC.Pool, otp_app: :my_app
+      end
+
+  This will load configuration from `Application.get_env(:my_app, DemoPool, [])` and merge it
+  with the options passed to `child_spec/1`.
+
+  Then configure it in your `config/runtime.exs`:
+
+      import Config
+
+      config :my_app, DemoPool,
+        pool_size: String.to_integer(System.get_env("GRPC_POOL_SIZE", "5")),
+        channel: [
+          address: System.fetch_env!("GRPC_ADDRESS"),
+          opts: []
+        ]
+
   The format of `address` and `opts` is the same used by
   [`GRPC.Stub.connect/2`](https://hexdocs.pm/grpc/0.5.0/GRPC.Stub.html#connect/2)
 
@@ -99,8 +119,17 @@ defmodule ConnGRPC.Pool do
       def get_all_pids, do: ConnGRPC.Pool.get_all_pids(__MODULE__)
 
       def child_spec(opts) do
+        {otp_app, use_opts} = Keyword.pop(unquote(use_opts), :otp_app)
+
+        app_env_opts =
+          case otp_app do
+            nil -> []
+            app -> Application.get_env(app, __MODULE__, [])
+          end
+
         [name: __MODULE__]
-        |> Keyword.merge(unquote(use_opts))
+        |> Keyword.merge(use_opts)
+        |> Keyword.merge(app_env_opts)
         |> Keyword.merge(opts)
         |> ConnGRPC.Pool.child_spec()
         |> Supervisor.child_spec(id: __MODULE__)
