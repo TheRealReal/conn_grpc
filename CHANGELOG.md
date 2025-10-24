@@ -1,7 +1,13 @@
 # Changelog for ConnGRPC
 
 
-## v0.2.0
+## v0.3.0
+
+### Added
+
+- `otp_app` option on `ConnGRPC.Pool`
+
+## v0.2.1
 
 ### Fix
 
