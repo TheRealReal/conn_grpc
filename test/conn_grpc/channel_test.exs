@@ -176,6 +176,24 @@ defmodule ConnGRPC.ChannelTest do
         _metadata = %{channel_name: :test_channel}
       }
     end
+
+    test "handles disconnect when channel is not yet connected" do
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Error],
+          on_disconnect: fn -> send(:channel_test, :disconnect_called) end,
+          backoff_module: ConnGRPC.Backoff.NoRetry
+        )
+
+      # Verify channel is not connected before sending disconnect
+      assert {:error, :not_connected} = Channel.get(channel_pid)
+
+      send(channel_pid, {:gun_down, fake_pid(), :http2, :normal, []})
+
+      refute_receive :disconnect_called
+      assert Process.alive?(channel_pid)
+    end
   end
 
   describe "Mint disconnect handling" do
@@ -222,6 +240,24 @@ defmodule ConnGRPC.ChannelTest do
         _measurements = %{duration: _},
         _metadata = %{channel_name: :test_channel}
       }
+    end
+
+    test "handles disconnect when channel is not yet connected" do
+      {:ok, channel_pid} =
+        Channel.start_link(
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Error],
+          on_disconnect: fn -> send(:channel_test, :disconnect_called) end,
+          backoff_module: ConnGRPC.Backoff.NoRetry
+        )
+
+      # Verify channel is not connected before sending disconnect
+      assert {:error, :not_connected} = Channel.get(channel_pid)
+
+      send(channel_pid, {:elixir_grpc, :connection_down, fake_pid()})
+
+      refute_receive :disconnect_called
+      assert Process.alive?(channel_pid)
     end
   end
 
