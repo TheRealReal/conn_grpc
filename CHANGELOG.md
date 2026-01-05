@@ -1,11 +1,17 @@
 # Changelog for ConnGRPC
 
 
+## v0.3.1
+
+### Fix
+
+- Handle disconnect when channel is not initialized, by @yordis (closes https://github.com/TheRealReal/conn_grpc/issues/22)
+
 ## v0.3.0
 
 ### Added
 
-- `otp_app` option on `ConnGRPC.Pool`
+- `otp_app` option on `ConnGRPC.Pool`, by @yordis
 
 ## v0.2.1
 
