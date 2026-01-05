@@ -253,14 +253,17 @@ defmodule ConnGRPC.Channel do
   defp handle_disconnect(state) do
     now = System.monotonic_time()
     debug(state, "Connection down")
-    state.on_disconnect.()
-    state.channel.adapter.disconnect(state.channel)
 
-    :telemetry.execute(
-      [:conn_grpc, :channel, :disconnected],
-      %{duration: now - state.connection_start},
-      telemetry_metadata(state)
-    )
+    if state.channel do
+      state.on_disconnect.()
+      state.channel.adapter.disconnect(state.channel)
+
+      :telemetry.execute(
+        [:conn_grpc, :channel, :disconnected],
+        %{duration: now - state.connection_start},
+        telemetry_metadata(state)
+      )
+    end
 
     state = %{state | channel: nil}
     schedule_retry(state)
