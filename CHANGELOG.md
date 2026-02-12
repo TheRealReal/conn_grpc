@@ -1,6 +1,12 @@
 # Changelog for ConnGRPC
 
 
+## v0.4.0
+
+### Added
+
+- Add bang function `ConnGRPC.Pool.get_channel!/1`, by @yordis
+
 ## v0.3.1
 
 ### Fix
