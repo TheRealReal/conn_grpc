@@ -186,6 +186,45 @@ defmodule ConnGRPC.PoolTest do
     end
   end
 
+  describe "get_channel!/1" do
+    test "returns channel when connected", %{pool_name: pool_name} do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Success]]
+        )
+
+      :timer.sleep(100)
+
+      assert %GRPC.Channel{} = Pool.get_channel!(pool_name)
+    end
+
+    test "raises ConnectionError with reason and pool_name when not connected", %{
+      pool_name: pool_name
+    } do
+      {:ok, _} =
+        Pool.start_link(
+          name: pool_name,
+          pool_size: 3,
+          channel: [address: "address", opts: [adapter: GRPC.Client.TestAdapters.Error]]
+        )
+
+      :timer.sleep(100)
+
+      error =
+        assert_raise ConnGRPC.ConnectionError, fn ->
+          Pool.get_channel!(pool_name)
+        end
+
+      assert error.reason == :not_connected
+      assert error.pool_name == pool_name
+
+      assert Exception.message(error) ==
+               "failed to get gRPC channel from pool #{inspect(pool_name)}: :not_connected"
+    end
+  end
+
   describe "get_all_pids/1" do
     test "returns list of pids", %{pool_name: pool_name} do
       {:ok, _} =
@@ -332,6 +371,7 @@ defmodule ConnGRPC.PoolTest do
       :timer.sleep(100)
 
       assert {:ok, %GRPC.Channel{}} = UsingTestPool.get_channel()
+      assert %GRPC.Channel{} = UsingTestPool.get_channel!()
       assert is_list(UsingTestPool.get_all_pids())
     end
 
@@ -376,5 +416,5 @@ defmodule ConnGRPC.PoolTest do
 
   defp send_disconnect_msg(pid), do: send(pid, {:gun_down, fake_pid(), :http2, :normal, []})
 
-  defp fake_pid, do: :erlang.list_to_pid('<0.123.456>')
+  defp fake_pid, do: :erlang.list_to_pid(~c"<0.123.456>")
 end

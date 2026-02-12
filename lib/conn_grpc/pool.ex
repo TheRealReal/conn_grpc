@@ -65,6 +65,10 @@ defmodule ConnGRPC.Pool do
 
   It'll return either `{:ok, channel}` or `{:error, :not_connected}`.
 
+  You can also use `get_channel!/0` which raises on error:
+
+      DemoPool.get_channel!()
+
   ## Pool without module
 
   If you don't want to define a module for your pool, you can add `ConnGRPC.Pool` directly to your
@@ -113,6 +117,10 @@ defmodule ConnGRPC.Pool do
       @doc "Returns a gRPC channel from the pool"
       @spec get_channel() :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
       def get_channel, do: ConnGRPC.Pool.get_channel(__MODULE__)
+
+      @doc "Returns a gRPC channel from the pool, raising on error"
+      @spec get_channel!() :: GRPC.Channel.t()
+      def get_channel!, do: ConnGRPC.Pool.get_channel!(__MODULE__)
 
       @doc "Returns all pids on the pool"
       @spec get_all_pids() :: [pid()]
@@ -175,6 +183,18 @@ defmodule ConnGRPC.Pool do
     )
 
     result
+  end
+
+  @doc "Returns a gRPC channel from the pool, raising on error"
+  @spec get_channel!(module | atom) :: GRPC.Channel.t()
+  def get_channel!(pool_name) do
+    case get_channel(pool_name) do
+      {:ok, channel} ->
+        channel
+
+      {:error, reason} ->
+        raise ConnGRPC.ConnectionError, reason: reason, pool_name: pool_name
+    end
   end
 
   defp do_get_channel(pool_name, channels, pool_size) do
