@@ -431,5 +431,5 @@ defmodule ConnGRPC.ChannelTest do
     end
   end
 
-  defp fake_pid, do: :erlang.list_to_pid('<0.123.456>')
+  defp fake_pid, do: :erlang.list_to_pid(~c"<0.123.456>")
 end
