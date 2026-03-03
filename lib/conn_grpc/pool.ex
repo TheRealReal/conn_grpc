@@ -242,10 +242,13 @@ defmodule ConnGRPC.Pool do
   end
 
   defp build_channels_supervisor_spec(pool_name, pool_size, channel_opts, registry_name) do
+    user_on_connect = Keyword.get(channel_opts, :on_connect)
+    user_on_disconnect = Keyword.get(channel_opts, :on_disconnect)
+
     channel_opts =
       channel_opts
-      |> Keyword.put(:on_connect, fn -> Registry.register(registry_name, :channels, nil) end)
-      |> Keyword.put(:on_disconnect, fn -> Registry.unregister(registry_name, :channels) end)
+      |> Keyword.put(:on_connect, fn -> on_connect(registry_name, user_on_connect) end)
+      |> Keyword.put(:on_disconnect, fn -> on_disconnect(registry_name, user_on_disconnect) end)
       |> Keyword.put(:pool_name, pool_name)
 
     channels_specs =
@@ -259,6 +262,19 @@ defmodule ConnGRPC.Pool do
       start: {Supervisor, :start_link, [channels_specs, [strategy: :one_for_one]]}
     }
   end
+
+  defp on_connect(registry_name, user_fn) do
+    Registry.register(registry_name, :channels, nil)
+    maybe_call(user_fn)
+  end
+
+  defp on_disconnect(registry_name, user_fn) do
+    Registry.unregister(registry_name, :channels)
+    maybe_call(user_fn)
+  end
+
+  defp maybe_call(nil), do: :ok
+  defp maybe_call(fun), do: fun.()
 
   defp build_ets_table(pool_name) do
     ets_table = ets_table(pool_name)
