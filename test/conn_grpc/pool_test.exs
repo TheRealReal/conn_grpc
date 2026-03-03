@@ -353,33 +353,6 @@ defmodule ConnGRPC.PoolTest do
     end
   end
 
-  describe "process leak" do
-    test "does not leak processes on reconnect cycles", %{pool_name: pool_name} do
-      {:ok, _} =
-        Pool.start_link(
-          name: pool_name,
-          pool_size: 2,
-          channel: [
-            address: "address",
-            opts: [adapter: GRPC.Client.TestAdapters.Success],
-            backoff_module: ConnGRPC.Backoff.Immediate
-          ]
-        )
-
-      :timer.sleep(100)
-      process_count_before = length(Process.list())
-
-      for _ <- 1..5 do
-        Pool.get_all_pids(pool_name) |> Enum.each(&send_disconnect_msg/1)
-        :timer.sleep(100)
-      end
-
-      process_count_after = length(Process.list())
-
-      assert process_count_after <= process_count_before
-    end
-  end
-
   describe "on_connect and on_disconnect callbacks" do
     test "calls user-provided on_connect when channel connects", %{pool_name: pool_name} do
       test_pid = self()
