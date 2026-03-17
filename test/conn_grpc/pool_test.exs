@@ -90,6 +90,10 @@ defmodule ConnGRPC.PoolTest do
       assert {:error, :not_connected} = Pool.get_channel(pool_name)
     end
 
+    test "returns {:error, :not_started} when pool is not started", %{pool_name: pool_name} do
+      assert {:error, :not_started} = Pool.get_channel(pool_name)
+    end
+
     test "does not return disconnected channel", %{pool_name: pool_name} do
       {:ok, _} =
         Pool.start_link(
@@ -222,6 +226,21 @@ defmodule ConnGRPC.PoolTest do
 
       assert Exception.message(error) ==
                "failed to get gRPC channel from pool #{inspect(pool_name)}: :not_connected"
+    end
+
+    test "raises ConnectionError with reason and pool_name when pool is not started", %{
+      pool_name: pool_name
+    } do
+      error =
+        assert_raise ConnGRPC.ConnectionError, fn ->
+          Pool.get_channel!(pool_name)
+        end
+
+      assert error.reason == :not_started
+      assert error.pool_name == pool_name
+
+      assert Exception.message(error) ==
+               "failed to get gRPC channel from pool #{inspect(pool_name)}: :not_started"
     end
   end
 
