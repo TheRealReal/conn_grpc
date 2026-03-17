@@ -1,11 +1,17 @@
 # Changelog for ConnGRPC
 
 
+## v0.4.2
+
+### Fix
+
+- Prevent exception when pool is not started, return error tuple instead, by @guisehn
+
 ## v0.4.1
 
 ### Fix
 
-- Fix pool overwriting user `on_connect`/`on_disconnect` callbacks, by @yordis (closes https://github.com/TheRealReal/conn_grpc/issues/22)
+- Fix pool overwriting user `on_connect`/`on_disconnect` callbacks, by @yordis
 
 ## v0.4.0
 
