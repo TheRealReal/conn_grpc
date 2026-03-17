@@ -1,6 +1,12 @@
 # Changelog for ConnGRPC
 
 
+## v0.4.1
+
+### Fix
+
+- Fix pool overwriting user `on_connect`/`on_disconnect` callbacks, by @yordis (closes https://github.com/TheRealReal/conn_grpc/issues/22)
+
 ## v0.4.0
 
 ### Added
