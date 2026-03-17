@@ -1,6 +1,12 @@
 # Changelog for ConnGRPC
 
 
+## v0.4.3
+
+### Fix
+
+- Add missing return value to `@spec` of `ConnGRPC.Pool.get_channel/1`
+
 ## v0.4.2
 
 ### Fix

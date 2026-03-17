@@ -115,7 +115,8 @@ defmodule ConnGRPC.Pool do
   defmacro __using__(use_opts \\ []) do
     quote do
       @doc "Returns a gRPC channel from the pool"
-      @spec get_channel() :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
+      @spec get_channel() ::
+              {:ok, GRPC.Channel.t()} | {:error, :not_connected} | {:error, :not_started}
       def get_channel, do: ConnGRPC.Pool.get_channel(__MODULE__)
 
       @doc "Returns a gRPC channel from the pool, raising on error"
@@ -163,11 +164,11 @@ defmodule ConnGRPC.Pool do
   end
 
   @doc "Returns a gRPC channel from the pool"
-  @spec get_channel(module | atom) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
+  @spec get_channel(module | atom) ::
+          {:ok, GRPC.Channel.t()} | {:error, :not_connected} | {:error, :not_started}
   def get_channel(pool_name) do
-    start = System.monotonic_time()
-
     if registry_alive?(pool_name) do
+      start = System.monotonic_time()
       channels = Registry.lookup(registry(pool_name), :channels)
       pool_size = length(channels)
 
