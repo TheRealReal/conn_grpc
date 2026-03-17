@@ -166,23 +166,33 @@ defmodule ConnGRPC.Pool do
   @spec get_channel(module | atom) :: {:ok, GRPC.Channel.t()} | {:error, :not_connected}
   def get_channel(pool_name) do
     start = System.monotonic_time()
-    channels = Registry.lookup(registry(pool_name), :channels)
-    pool_size = length(channels)
 
-    result =
-      if pool_size > 0 do
-        do_get_channel(pool_name, channels, pool_size)
-      else
-        {:error, :not_connected}
-      end
+    if registry_alive?(pool_name) do
+      channels = Registry.lookup(registry(pool_name), :channels)
+      pool_size = length(channels)
 
-    :telemetry.execute(
-      [:conn_grpc, :pool, :get_channel],
-      %{duration: System.monotonic_time() - start},
-      %{pool_name: pool_name}
-    )
+      result =
+        if pool_size > 0 do
+          do_get_channel(pool_name, channels, pool_size)
+        else
+          {:error, :not_connected}
+        end
 
-    result
+      :telemetry.execute(
+        [:conn_grpc, :pool, :get_channel],
+        %{duration: System.monotonic_time() - start},
+        %{pool_name: pool_name}
+      )
+
+      result
+    else
+      {:error, :not_started}
+    end
+  end
+
+  defp registry_alive?(pool_name) do
+    registry_name = registry(pool_name)
+    Process.whereis(registry_name) != nil
   end
 
   @doc "Returns a gRPC channel from the pool, raising on error"
