@@ -353,6 +353,52 @@ defmodule ConnGRPC.PoolTest do
     end
   end
 
+  describe "on_connect and on_disconnect callbacks" do
+    test "calls user-provided on_connect when channel connects", %{pool_name: pool_name} do
+      test_pid = self()
+
+      Pool.start_link(
+        name: pool_name,
+        pool_size: 2,
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          on_connect: fn -> send(test_pid, :user_on_connect) end
+        ]
+      )
+
+      :timer.sleep(100)
+
+      assert_received :user_on_connect
+      assert_received :user_on_connect
+    end
+
+    test "calls user-provided on_disconnect when channel disconnects", %{pool_name: pool_name} do
+      test_pid = self()
+
+      Pool.start_link(
+        name: pool_name,
+        pool_size: 2,
+        channel: [
+          address: "address",
+          opts: [adapter: GRPC.Client.TestAdapters.Success],
+          backoff_module: ConnGRPC.Backoff.NoRetry,
+          on_disconnect: fn -> send(test_pid, :user_on_disconnect) end
+        ]
+      )
+
+      :timer.sleep(100)
+
+      pids = Pool.get_all_pids(pool_name)
+      Enum.each(pids, &send_disconnect_msg/1)
+
+      :timer.sleep(100)
+
+      assert_received :user_on_disconnect
+      assert_received :user_on_disconnect
+    end
+  end
+
   describe "__using__" do
     test "allows defining pool as a module" do
       defmodule UsingTestPool do
