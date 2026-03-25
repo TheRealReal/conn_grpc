@@ -256,7 +256,7 @@ defmodule ConnGRPC.Channel do
 
     if state.channel do
       state.on_disconnect.()
-      state.channel.adapter.disconnect(state.channel)
+      disconnect_channel(state)
 
       :telemetry.execute(
         [:conn_grpc, :channel, :disconnected],
@@ -267,6 +267,18 @@ defmodule ConnGRPC.Channel do
 
     state = %{state | channel: nil}
     schedule_retry(state)
+  end
+
+  # Disconnect using grpc_stub.disconnect/1 which properly cleans up the
+  # GRPC.Client.Connection GenServer process. Falls back to adapter.disconnect/1
+  # if the stub disconnect fails (e.g. connection process already gone).
+  defp disconnect_channel(state) do
+    case state.config.grpc_stub.disconnect(state.channel) do
+      {:ok, _} -> :ok
+      {:error, _} -> state.channel.adapter.disconnect(state.channel)
+    end
+  rescue
+    _ -> state.channel.adapter.disconnect(state.channel)
   end
 
   defp schedule_retry(state) do
